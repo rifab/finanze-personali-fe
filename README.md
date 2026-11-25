@@ -1,15 +1,16 @@
 # Finanze personali
 
-PWA privata per gestire conti, entrate e uscite personali e importare i movimenti esportati da Wallet di BudgetBakers.
+PWA privata per gestire conti, entrate e uscite personali e importare i movimenti esportati da Wallet di BudgetBakers o Trade Republic.
 
 ## Funzionalità
 
 - gestione di più conti e calcolo del saldo;
+- classificazione dei conti che contengono anche investimenti, con storico di acquisti e vendite separato dalla liquidità;
 - registrazione di entrate, uscite e trasferimenti;
 - ricerca e filtri per conto, tipo e mese;
 - pianificazione di pagamenti singoli o ricorrenti con avvisi di scadenza;
 - riepilogo mensile e distribuzione delle spese per categoria;
-- importazione CSV Wallet con anteprima e riconoscimento dei duplicati;
+- importazione CSV Wallet e Trade Republic con anteprima e riconoscimento dei duplicati;
 - esportazione di un backup JSON completo;
 - autenticazione Firebase Email/Password e archivio separato per utente;
 - interfaccia responsive, tema chiaro e scuro e supporto PWA.
@@ -42,6 +43,8 @@ users/{uid}/financeSchedules/{scheduleId}
 
 I movimenti vengono salvati come documenti separati. Gli importi sono negativi per le uscite e positivi per le entrate.
 
+Un conto può mantenere il proprio tipo bancario ed essere contemporaneamente marcato come investimento. Il saldo del conto rappresenta la liquidità; acquisti e vendite determinano invece il capitale netto storico investito. Le quotazioni di mercato e le plus/minusvalenze non realizzate non vengono gestite dall'app.
+
 Le pianificazioni supportano eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali, senza fine, fino a una data o per un numero definito di eventi. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso.
 
 Nei selettori e nelle viste, il conto denominato `Conto corrente postale` ha priorità; `Libretto postale` viene mostrato per ultimo. Gli altri conti sono ordinati alfabeticamente.
@@ -55,6 +58,16 @@ account;category;currency;amount;ref_currency_amount;type;payment_type;note;date
 ```
 
 La data conserva il giorno riportato nel CSV senza conversioni di fuso orario. Gli identificatori deterministici rendono idempotente la reimportazione dello stesso archivio, mantenendo comunque distinti eventuali movimenti identici.
+
+## Importazione Trade Republic
+
+L'importatore riconosce il CSV ufficiale delle operazioni Trade Republic. Per ogni riga calcola il movimento netto sommando importo, commissione e imposta. Versamenti, prelievi, acquisti e vendite vengono classificati come trasferimenti patrimoniali, così modificano la liquidità senza alterare i totali di entrate e spese. Interessi accreditati, dividendi, bonus e rettifiche fiscali restano invece movimenti reali.
+
+La reimportazione usa l'identificativo dell'operazione fornito da Trade Republic per ignorare i duplicati. Se non esiste un conto di destinazione, l'app può creare `Trade Republic` con saldo iniziale zero e classificazione `Conto titoli`. La pagina Investimenti presenta prima il riepilogo complessivo e una scheda per ciascun conto; selezionando un conto si apre il dettaglio con acquisti, vendite, liquidità e operazioni paginate da 10, 15 o 25 elementi. Non tenta di ricostruire il valore corrente di mercato.
+
+## Aggiornamenti PWA
+
+In produzione il service worker controlla la disponibilità di una nuova versione all'avvio, al ritorno nell'app e ogni cinque minuti. Quando l'aggiornamento prende il controllo viene mostrato un avviso persistente con il pulsante `Aggiorna ora`; la pagina non viene ricaricata automaticamente mentre l'utente sta lavorando.
 
 ## Verifiche
 

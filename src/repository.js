@@ -44,14 +44,15 @@ export function saveSchedule(uid, schedule) {
 
 export const removeSchedule = (uid, id) => deleteDoc(doc(db, "users", uid, "financeSchedules", id));
 
-export async function importWallet(uid, fileName, parsed, existingAccounts, existingIds) {
-  const importId = `wallet-import-${Date.now()}`;
+export async function importFinanceCsv(uid, fileName, parsed, existingAccounts, existingIds) {
+  const source = parsed.source || "wallet-csv";
+  const importId = `${source.replace(/[^a-z0-9-]/g, "")}-import-${Date.now()}`;
   const accountByName = new Map(existingAccounts.map((item) => [item.name.toLocaleLowerCase("it"), item]));
   const newAccounts = [];
   for (const name of parsed.accounts) {
     const key = name.toLocaleLowerCase("it");
     if (accountByName.has(key)) continue;
-    const account = { id: accountIdFor(name), name, type: "current", currency: "EUR", initialBalance: 0 };
+    const account = { id: accountIdFor(name), name, type: "current", currency: "EUR", initialBalance: 0, ...(parsed.accountDefaults || {}) };
     accountByName.set(key, account); newAccounts.push(account);
   }
   const rows = parsed.transactions.map((item) => ({ ...item, id: item.sourceId, accountId: accountByName.get(item.accountName.toLocaleLowerCase("it")).id, importId }))
@@ -74,9 +75,11 @@ export async function importWallet(uid, fileName, parsed, existingAccounts, exis
     await batch.commit();
   }
   await setDoc(doc(db, "users", uid, "financeImports", importId), {
-    fileName: fileName.slice(0, 300), source: "wallet-csv", rowCount: parsed.transactions.length,
+    fileName: fileName.slice(0, 300), source, rowCount: parsed.transactions.length,
     newCount: rows.length, duplicateCount: parsed.transactions.length - rows.length, createdAt: serverTimestamp()
   });
   return { imported: rows.length, duplicates: parsed.transactions.length - rows.length, accounts: newAccounts.length };
 }
+
+export const importWallet = importFinanceCsv;
 

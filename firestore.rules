@@ -7,12 +7,23 @@ service cloud.firestore {
 
     function validAccount() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['name', 'type', 'currency', 'initialBalance', 'archivedAt', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'type', 'currency', 'initialBalance', 'isInvestment', 'investmentType', 'investmentValue', 'investmentValueDate', 'archivedAt', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['name', 'type', 'currency', 'initialBalance', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.type in ['current', 'cash', 'savings', 'card', 'other']
         && data.currency == 'EUR'
-        && data.initialBalance is number;
+        && data.initialBalance is number
+        && (!data.keys().hasAny(['isInvestment', 'investmentType', 'investmentValue', 'investmentValueDate'])
+          || (data.keys().hasAll(['isInvestment', 'investmentType', 'investmentValue', 'investmentValueDate'])
+            && data.isInvestment is bool
+            && ((data.isInvestment
+                && data.investmentType in ['brokerage', 'pension', 'crypto', 'managed', 'crowdfunding', 'other']
+                && data.investmentValue is number && data.investmentValue >= 0
+                && data.investmentValueDate is string && data.investmentValueDate.matches('^\\d{4}-\\d{2}-\\d{2}$'))
+              || (!data.isInvestment
+                && data.investmentType == ''
+                && data.investmentValue == 0
+                && data.investmentValueDate == ''))));
     }
 
     function validTransaction() {
@@ -30,7 +41,7 @@ service cloud.firestore {
         && data.payee is string && data.payee.size() <= 500
         && data.labels is list && data.labels.size() <= 50
         && data.isTransfer is bool
-        && data.source in ['manual', 'wallet-csv'];
+        && data.source in ['manual', 'wallet-csv', 'trade-republic-csv'];
     }
 
     function validImport() {
@@ -38,7 +49,7 @@ service cloud.firestore {
       return data.keys().hasOnly(['fileName', 'source', 'rowCount', 'newCount', 'duplicateCount', 'createdAt'])
         && data.keys().hasAll(['fileName', 'source', 'rowCount', 'newCount', 'duplicateCount', 'createdAt'])
         && data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 300
-        && data.source == 'wallet-csv'
+        && data.source in ['wallet-csv', 'trade-republic-csv']
         && data.rowCount is int && data.rowCount >= 0
         && data.newCount is int && data.newCount >= 0
         && data.duplicateCount is int && data.duplicateCount >= 0;

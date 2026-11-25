@@ -6,6 +6,15 @@ export const accountTypes = {
   other: "Altro"
 };
 
+export const investmentTypes = {
+  brokerage: "Conto titoli",
+  pension: "Fondo pensione",
+  crypto: "Criptovalute",
+  managed: "Gestione patrimoniale",
+  crowdfunding: "Crowdfunding",
+  other: "Altro investimento"
+};
+
 export const scheduleFrequencyLabels = {
   none: "Una volta",
   daily: "Ogni giorno",
@@ -31,6 +40,48 @@ export function accountBalance(account, transactions) {
     .reduce((total, item) => total + (Number(item.amount) || 0), 0);
 }
 
+const investmentMovementType = (transaction) => {
+  const paymentType = String(transaction?.paymentType || "").toUpperCase();
+  const category = String(transaction?.category || "").toLocaleLowerCase("it");
+  if (paymentType === "BUY" || category === "investimenti · acquisto") return "buy";
+  if (paymentType === "SELL" || category === "investimenti · vendita") return "sell";
+  return "";
+};
+
+export function investmentTransactionsForAccount(accountId, transactions) {
+  return transactions
+    .filter((item) => item.accountId === accountId && investmentMovementType(item))
+    .sort((a, b) => (b.date || "").localeCompare(a.date || "") || String(b.id || "").localeCompare(String(a.id || "")));
+}
+
+export function investmentActivity(accountId, transactions) {
+  const rows = investmentTransactionsForAccount(accountId, transactions);
+  const buys = rows.filter((item) => investmentMovementType(item) === "buy");
+  const sells = rows.filter((item) => investmentMovementType(item) === "sell");
+  const purchases = buys.reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0);
+  const sales = sells.reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0);
+  const dates = rows.map((item) => item.date).filter(Boolean).sort();
+  return {
+    purchases,
+    sales,
+    netInvested: purchases - sales,
+    buyCount: buys.length,
+    sellCount: sells.length,
+    firstDate: dates[0] || "",
+    lastDate: dates.at(-1) || ""
+  };
+}
+
+export function investmentSummary(accounts, transactions) {
+  const investmentAccounts = accounts.filter((account) => account.isInvestment);
+  const activities = investmentAccounts.map((account) => investmentActivity(account.id, transactions));
+  const purchases = activities.reduce((total, activity) => total + activity.purchases, 0);
+  const sales = activities.reduce((total, activity) => total + activity.sales, 0);
+  const investedValue = purchases - sales;
+  const liquidBalance = investmentAccounts.reduce((total, account) => total + accountBalance(account, transactions), 0);
+  return { count: investmentAccounts.length, purchases, sales, investedValue, liquidBalance, total: investedValue + liquidBalance };
+}
+
 export function sortAccountsByImportance(accounts) {
   const rank = (account) => {
     const name = String(account?.name || "").trim().toLocaleLowerCase("it");
@@ -44,8 +95,9 @@ export function sortAccountsByImportance(accounts) {
 export function financeSummary(accounts, transactions, month) {
   const inMonth = transactions.filter((item) => item.date?.startsWith(month));
   const ordinary = inMonth.filter((item) => !item.isTransfer);
+  const historicalInvestments = investmentSummary(accounts, transactions).investedValue;
   return {
-    balance: accounts.reduce((total, account) => total + accountBalance(account, transactions), 0),
+    balance: accounts.reduce((total, account) => total + accountBalance(account, transactions), 0) + historicalInvestments,
     income: ordinary.filter((item) => item.kind === "income").reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0),
     expenses: ordinary.filter((item) => item.kind === "expense").reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0),
     count: inMonth.length

@@ -11,6 +11,10 @@
 - Le ricorrenze mensili e annuali restano ancorate al giorno iniziale e si adattano ai mesi più corti. La fine può essere assente, una data oppure un numero di eventi.
 - Gli avvisi nell'app e le notifiche mostrate alla riapertura non equivalgono a push a PWA chiusa: non dichiarare notifiche in background senza un backend pianificato.
 - Ordinare i conti con `Conto corrente postale` per primo, `Libretto postale` per ultimo e gli altri alfabeticamente.
+- Un conto può avere `isInvestment` senza perdere il tipo bancario: `initialBalance` e tutti i movimenti descrivono la liquidità, mentre acquisti e vendite determinano il capitale netto storico investito. Non gestire quotazioni di mercato o plus/minusvalenze non realizzate.
+- Nell'import Trade Republic il saldo liquido deriva da `amount + fee + tax`; versamenti, prelievi, acquisti e vendite sono trasferimenti patrimoniali, mentre interessi, dividendi, bonus e rettifiche fiscali sono movimenti ordinari. Lo storico degli investimenti usa gli importi netti di acquisti e vendite.
+- La pagina Investimenti separa riepilogo e dettaglio: mostra prima i totali e le schede dei conti, poi apre acquisti, vendite e liquidità del conto selezionato. La lista delle operazioni usa 10 elementi predefiniti, con opzioni 10, 15 e 25.
+- Quando cambia `public/sw.js`, incrementare il nome della cache. Gli aggiornamenti PWA devono proporre il pulsante `Aggiorna ora` senza ricaricare automaticamente la pagina.
 - Prima di consegnare una modifica eseguire `npm test`, `npm run build` e `git diff --check`.
-- Non pubblicare regole Firestore o frontend senza verificare esplicitamente progetto e account selezionati.
+- Lo sviluppo resta locale: non pubblicare regole Firestore o frontend. La pubblicazione viene eseguita dall'utente.
 
