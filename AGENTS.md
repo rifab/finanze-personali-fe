@@ -16,6 +16,7 @@
 - La pagina Investimenti separa riepilogo e dettaglio: mostra prima i totali e le schede dei conti, poi apre acquisti, vendite e liquidità del conto selezionato. La lista delle operazioni usa 10 elementi predefiniti, con opzioni 10, 15 e 25.
 - Sotto i 950 px la barra inferiore è la navigazione primaria: le sue quattro destinazioni non vengono duplicate nella sidebar “Altro”, che resta sopra la barra e contiene soltanto le sezioni secondarie, tema e profilo. Altezza, spaziatura, safe area e distanza dei messaggi flottanti seguono il pattern di `spese-auto-fe`; conservare `viewport-fit=cover` nel meta viewport per applicare la safe area su iOS.
 - Nei modali mobile i campi, in particolare le date native, devono restare comprimibili nel form senza generare scorrimento orizzontale; il contenitore rispetta la viewport dinamica e le safe area della PWA.
+- I campi monetari mostrano il prefisso `€` con il pattern `.currency-input`, mantenendo nel modello valori numerici in EUR.
 - Quando cambia `public/sw.js`, incrementare il nome della cache. Gli aggiornamenti PWA devono proporre il pulsante `Aggiorna ora` senza ricaricare automaticamente la pagina.
 - Prima di consegnare una modifica eseguire `npm test`, `npm run build` e `git diff --check`.
 - Wrangler resta bloccato esattamente alla `4.151.0`: la `4.168.0` richiede `cloudflare@5.2.0` ma tenta di caricare il file assente `cloudflare/shims/web`. L'override di `undici` mantiene sicura la toolchain della versione bloccata; non usare `npm audit fix --force` finché l'incompatibilità non è risolta a monte.
