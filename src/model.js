@@ -34,6 +34,18 @@ export const today = () => {
 };
 export const uid = (prefix = "item") => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+export function normalizePaymentSchedule(schedule = {}) {
+  const numericAmount = Number(schedule.amount) || 0;
+  const kind = schedule.kind === "income" || (!schedule.kind && numericAmount > 0) ? "income" : "expense";
+  const absoluteAmount = Math.abs(numericAmount);
+  return {
+    ...schedule,
+    kind,
+    amount: absoluteAmount === 0 ? 0 : kind === "income" ? absoluteAmount : -absoluteAmount,
+    currency: "EUR"
+  };
+}
+
 export function accountBalance(account, transactions) {
   return (Number(account.initialBalance) || 0) + transactions
     .filter((item) => item.accountId === account.id)

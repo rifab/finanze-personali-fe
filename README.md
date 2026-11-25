@@ -8,7 +8,7 @@ PWA privata per gestire conti, entrate e uscite personali e importare i moviment
 - classificazione dei conti che contengono anche investimenti, con storico di acquisti e vendite separato dalla liquidità;
 - registrazione di entrate, uscite e trasferimenti;
 - ricerca e filtri per conto, tipo e mese;
-- pianificazione di pagamenti singoli o ricorrenti con avvisi di scadenza;
+- pianificazione di pagamenti e accrediti singoli o ricorrenti, con importo in euro e avvisi di scadenza;
 - riepilogo mensile e distribuzione delle spese per categoria;
 - importazione CSV Wallet e Trade Republic con anteprima e riconoscimento dei duplicati;
 - esportazione di un backup JSON completo;
@@ -45,7 +45,7 @@ I movimenti vengono salvati come documenti separati. Gli importi sono negativi p
 
 Un conto può mantenere il proprio tipo bancario ed essere contemporaneamente marcato come investimento. Il saldo del conto rappresenta la liquidità; acquisti e vendite determinano invece il capitale netto storico investito. Le quotazioni di mercato e le plus/minusvalenze non realizzate non vengono gestite dall'app.
 
-Le pianificazioni supportano eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali, senza fine, fino a una data o per un numero definito di eventi. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso.
+Le pianificazioni supportano uscite e entrate con importo in euro, eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali, senza fine, fino a una data o per un numero definito di eventi. La lista evidenzia importo e prossima scadenza per ciascun conto. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso. Segnare un evento come eseguito aggiorna la pianificazione ma non crea automaticamente un movimento.
 
 Nei selettori e nelle viste, il conto denominato `Conto corrente postale` ha priorità; `Libretto postale` viene mostrato per ultimo. Gli altri conti sono ordinati alfabeticamente.
 

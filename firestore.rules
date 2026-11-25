@@ -57,10 +57,14 @@ service cloud.firestore {
 
     function validSchedule() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['name', 'accountId', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
-        && data.keys().hasAll(['name', 'accountId', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
+        && data.kind in ['expense', 'income']
+        && data.amount is number
+        && ((data.kind == 'expense' && data.amount <= 0) || (data.kind == 'income' && data.amount >= 0))
+        && data.currency == 'EUR'
         && data.category is string && data.category.size() > 0 && data.category.size() <= 200
         && data.note is string && data.note.size() <= 5000
         && data.startDate is string && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')

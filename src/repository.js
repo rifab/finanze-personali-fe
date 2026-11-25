@@ -1,5 +1,6 @@
 import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { normalizePaymentSchedule } from "./model.js";
 
 const pathFor = (uid, name) => collection(db, "users", uid, name);
 const withId = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -17,7 +18,7 @@ export function observeFinance(uid, onAccounts, onTransactions, onImports, onSch
     onSnapshot(pathFor(uid, "financeAccounts"), (snapshot) => onAccounts(withId(snapshot)), onError),
     onSnapshot(pathFor(uid, "financeTransactions"), (snapshot) => onTransactions(withId(snapshot)), onError),
     onSnapshot(pathFor(uid, "financeImports"), (snapshot) => onImports(withId(snapshot)), onError),
-    onSnapshot(pathFor(uid, "financeSchedules"), (snapshot) => onSchedules(withId(snapshot)), onError)
+    onSnapshot(pathFor(uid, "financeSchedules"), (snapshot) => onSchedules(withId(snapshot).map(normalizePaymentSchedule)), onError)
   ];
 }
 

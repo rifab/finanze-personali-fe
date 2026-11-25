@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountBalance, categoryTotals, duePaymentCount, financeSummary, investmentActivity, investmentSummary, investmentTransactionsForAccount, paymentScheduleOccurrences, paymentScheduleState, sortAccountsByImportance } from "./model.js";
+import { accountBalance, categoryTotals, duePaymentCount, financeSummary, investmentActivity, investmentSummary, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, sortAccountsByImportance } from "./model.js";
 
 const accounts = [{ id: "a", initialBalance: 100 }, { id: "b", initialBalance: 20 }];
 const transactions = [
@@ -62,5 +62,11 @@ test("calcola scadenze da notificare e prossimo evento", () => {
   const schedule = { startDate: "2026-11-01", frequency: "weekly", endMode: "never", completedThrough: "2026-11-08" };
   assert.deepEqual(paymentScheduleState(schedule, "2026-11-25"), { dueDates: ["2026-11-15", "2026-11-22"], nextDate: "2026-11-29", completed: false, overdue: 2, dueToday: false });
   assert.equal(duePaymentCount([schedule, { startDate: "2026-11-25", frequency: "none", endMode: "never", completedThrough: "" }], "2026-11-25"), 3);
+});
+
+test("normalizza tipo, valuta e segno degli importi pianificati", () => {
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", amount: 12 }), { name: "Canone", kind: "income", amount: 12, currency: "EUR" });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", kind: "expense", amount: 12 }), { name: "Canone", kind: "expense", amount: -12, currency: "EUR" });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Storico" }), { name: "Storico", kind: "expense", amount: 0, currency: "EUR" });
 });
 
