@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function validAccount() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['name', 'type', 'currency', 'initialBalance', 'archivedAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'type', 'currency', 'initialBalance', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.type in ['current', 'cash', 'savings', 'card', 'other']
+        && data.currency == 'EUR'
+        && data.initialBalance is number;
+    }
+
+    function validTransaction() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['accountId', 'date', 'kind', 'amount', 'currency', 'category', 'note', 'payee', 'labels', 'isTransfer', 'paymentType', 'source', 'sourceId', 'importId', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['accountId', 'date', 'kind', 'amount', 'currency', 'category', 'note', 'payee', 'labels', 'isTransfer', 'source', 'createdAt', 'updatedAt'])
+        && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.kind in ['expense', 'income']
+        && data.amount is number
+        && ((data.kind == 'expense' && data.amount <= 0) || (data.kind == 'income' && data.amount >= 0))
+        && data.currency == 'EUR'
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 200
+        && data.note is string && data.note.size() <= 5000
+        && data.payee is string && data.payee.size() <= 500
+        && data.labels is list && data.labels.size() <= 50
+        && data.isTransfer is bool
+        && data.source in ['manual', 'wallet-csv'];
+    }
+
+    function validImport() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['fileName', 'source', 'rowCount', 'newCount', 'duplicateCount', 'createdAt'])
+        && data.keys().hasAll(['fileName', 'source', 'rowCount', 'newCount', 'duplicateCount', 'createdAt'])
+        && data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 300
+        && data.source == 'wallet-csv'
+        && data.rowCount is int && data.rowCount >= 0
+        && data.newCount is int && data.newCount >= 0
+        && data.duplicateCount is int && data.duplicateCount >= 0;
+    }
+
+    function validSchedule() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['name', 'accountId', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'accountId', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 200
+        && data.note is string && data.note.size() <= 5000
+        && data.startDate is string && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.frequency in ['none', 'daily', 'weekly', 'monthly', 'annual']
+        && data.endMode in ['never', 'date', 'count']
+        && data.endDate is string
+        && ((data.endMode == 'date' && data.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$') && data.endDate >= data.startDate) || (data.endMode != 'date' && data.endDate == ''))
+        && data.occurrenceCount is int
+        && ((data.endMode == 'count' && data.occurrenceCount > 0 && data.occurrenceCount <= 100000) || (data.endMode != 'count' && data.occurrenceCount == 0))
+        && data.completedThrough is string
+        && (data.completedThrough == '' || data.completedThrough.matches('^\\d{4}-\\d{2}-\\d{2}$'));
+    }
+
+    match /users/{userId}/financeAccounts/{accountId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validAccount();
+      allow delete: if isOwner(userId);
+    }
+    match /users/{userId}/financeTransactions/{transactionId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validTransaction();
+      allow delete: if isOwner(userId);
+    }
+    match /users/{userId}/financeImports/{importId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && validImport();
+      allow update, delete: if false;
+    }
+    match /users/{userId}/financeSchedules/{scheduleId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validSchedule();
+      allow delete: if isOwner(userId);
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
+

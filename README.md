@@ -7,6 +7,7 @@ PWA privata per gestire conti, entrate e uscite personali e importare i moviment
 - gestione di più conti e calcolo del saldo;
 - registrazione di entrate, uscite e trasferimenti;
 - ricerca e filtri per conto, tipo e mese;
+- pianificazione di pagamenti singoli o ricorrenti con avvisi di scadenza;
 - riepilogo mensile e distribuzione delle spese per categoria;
 - importazione CSV Wallet con anteprima e riconoscimento dei duplicati;
 - esportazione di un backup JSON completo;
@@ -30,15 +31,20 @@ Creare prima un file `.env` locale partendo da `.env.example`. Il file `.env` no
 
 ## Struttura dei dati
 
-L'app può condividere il progetto Firebase e gli utenti di Spese auto, ma utilizza collezioni indipendenti:
+L'app utilizza un progetto Firebase dedicato e salva ogni dominio in una collezione indipendente:
 
 ```text
 users/{uid}/financeAccounts/{accountId}
 users/{uid}/financeTransactions/{transactionId}
 users/{uid}/financeImports/{importId}
+users/{uid}/financeSchedules/{scheduleId}
 ```
 
 I movimenti vengono salvati come documenti separati. Gli importi sono negativi per le uscite e positivi per le entrate.
+
+Le pianificazioni supportano eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali, senza fine, fino a una data o per un numero definito di eventi. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso.
+
+Nei selettori e nelle viste, il conto denominato `Conto corrente postale` ha priorità; `Libretto postale` viene mostrato per ultimo. Gli altri conti sono ordinati alfabeticamente.
 
 ## Importazione Wallet
 
