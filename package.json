@@ -18,10 +18,11 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.1",
     "vite": "^7.3.6",
-    "wrangler": "^4.151.0"
+    "wrangler": "4.151.0"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.13.6"
+    "@grpc/grpc-js": "^1.13.6",
+    "undici": "7.30.2"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
