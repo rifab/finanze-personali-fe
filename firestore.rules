@@ -57,8 +57,8 @@ service cloud.firestore {
 
     function validSchedule() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
-        && data.keys().hasAll(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
         && data.kind in ['expense', 'income']
@@ -69,6 +69,7 @@ service cloud.firestore {
         && data.note is string && data.note.size() <= 5000
         && data.startDate is string && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && data.frequency in ['none', 'daily', 'weekly', 'monthly', 'annual']
+        && data.recurrenceInterval is int && data.recurrenceInterval >= 1 && data.recurrenceInterval <= 1000
         && data.endMode in ['never', 'date', 'count']
         && data.endDate is string
         && ((data.endMode == 'date' && data.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$') && data.endDate >= data.startDate) || (data.endMode != 'date' && data.endDate == ''))

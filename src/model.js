@@ -38,11 +38,14 @@ export function normalizePaymentSchedule(schedule = {}) {
   const numericAmount = Number(schedule.amount) || 0;
   const kind = schedule.kind === "income" || (!schedule.kind && numericAmount > 0) ? "income" : "expense";
   const absoluteAmount = Math.abs(numericAmount);
+  const numericInterval = Number(schedule.recurrenceInterval);
+  const recurrenceInterval = Number.isInteger(numericInterval) && numericInterval >= 1 && numericInterval <= 1000 ? numericInterval : 1;
   return {
     ...schedule,
     kind,
     amount: absoluteAmount === 0 ? 0 : kind === "income" ? absoluteAmount : -absoluteAmount,
-    currency: "EUR"
+    currency: "EUR",
+    recurrenceInterval
   };
 }
 
@@ -139,14 +142,14 @@ const addCalendarDays = (value, days) => {
   const parts = dateParts(value);
   return parts ? isoDate(new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days))) : "";
 };
-const occurrenceDate = (startDate, frequency, index) => {
+const occurrenceDate = (startDate, frequency, recurrenceInterval, index) => {
   const parts = dateParts(startDate);
   if (!parts) return "";
   const [year, month, day] = parts;
-  if (frequency === "daily") return addCalendarDays(startDate, index);
-  if (frequency === "weekly") return addCalendarDays(startDate, index * 7);
-  const interval = frequency === "annual" ? 12 : 1;
-  const targetIndex = month - 1 + index * interval;
+  if (frequency === "daily") return addCalendarDays(startDate, index * recurrenceInterval);
+  if (frequency === "weekly") return addCalendarDays(startDate, index * 7 * recurrenceInterval);
+  const monthInterval = (frequency === "annual" ? 12 : 1) * recurrenceInterval;
+  const targetIndex = month - 1 + index * monthInterval;
   const targetYear = year + Math.floor(targetIndex / 12);
   const targetMonth = ((targetIndex % 12) + 12) % 12;
   const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
@@ -156,10 +159,11 @@ const occurrenceDate = (startDate, frequency, index) => {
 export function paymentScheduleOccurrences(schedule, throughDate) {
   if (!dateParts(schedule?.startDate) || !dateParts(throughDate) || schedule.startDate > throughDate) return [];
   const frequency = schedule.frequency || "none";
+  const recurrenceInterval = Math.max(1, Math.min(1000, Number(schedule.recurrenceInterval) || 1));
   const maximum = frequency === "none" ? 1 : schedule.endMode === "count" ? Math.max(0, Number(schedule.occurrenceCount) || 0) : 100000;
   const dates = [];
   for (let index = 0; index < maximum; index += 1) {
-    const date = occurrenceDate(schedule.startDate, frequency, index);
+    const date = occurrenceDate(schedule.startDate, frequency, recurrenceInterval, index);
     if (!date || date > throughDate || (schedule.endMode === "date" && schedule.endDate && date > schedule.endDate)) break;
     dates.push(date);
   }
@@ -167,7 +171,13 @@ export function paymentScheduleOccurrences(schedule, throughDate) {
 }
 
 export function paymentScheduleState(schedule, referenceDate) {
-  const horizon = addCalendarDays(referenceDate, 370);
+  const recurrenceInterval = Math.max(1, Math.min(1000, Number(schedule.recurrenceInterval) || 1));
+  const horizonDays = schedule.frequency === "annual" ? 366 * (recurrenceInterval + 1)
+    : schedule.frequency === "monthly" ? 32 * (recurrenceInterval + 1)
+      : schedule.frequency === "weekly" ? 7 * (recurrenceInterval + 1)
+        : schedule.frequency === "daily" ? recurrenceInterval + 1
+          : 370;
+  const horizon = addCalendarDays(referenceDate, horizonDays);
   const occurrences = paymentScheduleOccurrences(schedule, horizon);
   const pending = occurrences.filter((date) => !schedule.completedThrough || date > schedule.completedThrough);
   const dueDates = pending.filter((date) => date <= referenceDate);
