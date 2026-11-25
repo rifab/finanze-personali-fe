@@ -15,6 +15,7 @@
 - Nell'import Trade Republic il saldo liquido deriva da `amount + fee + tax`; versamenti, prelievi, acquisti e vendite sono trasferimenti patrimoniali, mentre interessi, dividendi, bonus e rettifiche fiscali sono movimenti ordinari. Lo storico degli investimenti usa gli importi netti di acquisti e vendite.
 - La pagina Investimenti separa riepilogo e dettaglio: mostra prima i totali e le schede dei conti, poi apre acquisti, vendite e liquidità del conto selezionato. La lista delle operazioni usa 10 elementi predefiniti, con opzioni 10, 15 e 25.
 - Sotto i 950 px la barra inferiore è la navigazione primaria: le sue quattro destinazioni non vengono duplicate nella sidebar “Altro”, che resta sopra la barra e contiene soltanto le sezioni secondarie, tema e profilo.
+- Nei modali mobile i campi, in particolare le date native, devono restare comprimibili nel form senza generare scorrimento orizzontale; il contenitore rispetta la viewport dinamica e le safe area della PWA.
 - Quando cambia `public/sw.js`, incrementare il nome della cache. Gli aggiornamenti PWA devono proporre il pulsante `Aggiorna ora` senza ricaricare automaticamente la pagina.
 - Prima di consegnare una modifica eseguire `npm test`, `npm run build` e `git diff --check`.
 - Lo sviluppo resta locale: non pubblicare regole Firestore o frontend. La pubblicazione viene eseguita dall'utente.
