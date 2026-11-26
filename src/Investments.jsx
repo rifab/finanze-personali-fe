@@ -9,6 +9,7 @@ import {
   Landmark,
   Pencil,
   Plus,
+  Search,
   ShoppingCart,
   WalletCards,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   accountBalance,
   dateLabel,
   investmentActivity,
+  filterInvestmentTransactions,
   investmentSummary,
   investmentTransactionsForAccount,
   investmentTypes,
@@ -36,16 +38,22 @@ function Amount({ children, hidden }) {
 function InvestmentOperations({ account, transactions, valuesHidden }) {
   const activity = investmentActivity(account.id, transactions);
   const movements = investmentTransactionsForAccount(account.id, transactions);
+  const [operationType, setOperationType] = useState("all");
+  const [product, setProduct] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(movements.length / pageSize));
+  const filteredMovements = filterInvestmentTransactions(movements, {
+    type: operationType === "all" ? "" : operationType,
+    product,
+  });
+  const pageCount = Math.max(1, Math.ceil(filteredMovements.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const visibleRows = movements.slice(
+  const visibleRows = filteredMovements.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
 
-  useEffect(() => setPage(1), [account.id, pageSize]);
+  useEffect(() => setPage(1), [account.id, operationType, product, pageSize]);
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
@@ -56,7 +64,7 @@ function InvestmentOperations({ account, transactions, valuesHidden }) {
         <div>
           <h3>Operazioni</h3>
           <span>
-            {movements.length} totali · {activity.buyCount}{" "}
+            {filteredMovements.length} risultati su {movements.length} · {activity.buyCount}{" "}
             {activity.buyCount === 1 ? "acquisto" : "acquisti"} · {activity.sellCount}{" "}
             {activity.sellCount === 1 ? "vendita" : "vendite"}
           </span>
@@ -76,6 +84,30 @@ function InvestmentOperations({ account, transactions, valuesHidden }) {
           </div>
         </label>
       </header>
+
+      <div className="investment-filters">
+        <label>
+          Tipo
+          <select value={operationType} onChange={(event) => setOperationType(event.target.value)}>
+            <option value="all">Tutti</option>
+            <option value="buy">Acquisto</option>
+            <option value="sell">Vendita</option>
+          </select>
+          <ChevronDown size={15} />
+        </label>
+        <label>
+          Prodotto
+          <span>
+            <Search size={15} />
+            <input
+              type="search"
+              value={product}
+              onChange={(event) => setProduct(event.target.value)}
+              placeholder="Cerca prodotto"
+            />
+          </span>
+        </label>
+      </div>
 
       {visibleRows.length ? (
         <>
@@ -125,7 +157,7 @@ function InvestmentOperations({ account, transactions, valuesHidden }) {
         </>
       ) : (
         <p className="investment-history-empty">
-          Nessun acquisto o vendita registrato per questo conto.
+          Nessuna operazione corrisponde ai filtri.
         </p>
       )}
     </div>
@@ -172,7 +204,7 @@ function InvestmentAccountCard({ account, transactions, valuesHidden, onOpen }) 
   );
 }
 
-function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit }) {
+function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit, onNewTransaction }) {
   const activity = investmentActivity(account.id, transactions);
 
   return (
@@ -188,9 +220,14 @@ function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit 
           <h1>{account.name}</h1>
           <p>Storico del capitale movimentato, senza quotazioni di mercato.</p>
         </div>
-        <button type="button" className="ghost" onClick={() => onEdit(account)}>
-          <Pencil size={17} />Modifica conto
-        </button>
+        <div className="investment-detail-actions">
+          <button type="button" className="primary" onClick={() => onNewTransaction(account)}>
+            <Plus size={18} />Nuova operazione
+          </button>
+          <button type="button" className="ghost" onClick={() => onEdit(account)}>
+            <Pencil size={17} />Modifica conto
+          </button>
+        </div>
       </header>
 
       <section className="investment-summary investment-detail-summary">
@@ -243,7 +280,7 @@ function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit 
   );
 }
 
-export default function Investments({ accounts, transactions, valuesHidden, onNew, onEdit }) {
+export default function Investments({ accounts, transactions, valuesHidden, onNew, onEdit, onNewTransaction }) {
   const rows = accounts.filter((account) => account.isInvestment);
   const summary = investmentSummary(accounts, transactions);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -261,6 +298,7 @@ export default function Investments({ accounts, transactions, valuesHidden, onNe
         valuesHidden={valuesHidden}
         onBack={() => setSelectedAccountId("")}
         onEdit={onEdit}
+        onNewTransaction={onNewTransaction}
       />
     );
   }

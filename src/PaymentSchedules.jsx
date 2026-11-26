@@ -7,6 +7,12 @@ const endModeLabels = {
   date: "Fino a una data",
   count: "Dopo un numero di eventi"
 };
+const recurrenceIntervalLabels = {
+  daily: "Intervallo in giorni",
+  weekly: "Intervallo in settimane",
+  monthly: "Intervallo in mesi",
+  annual: "Intervallo in anni"
+};
 const monthNames = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 
 function shortDateLabel(value) {
@@ -18,10 +24,11 @@ function recurrenceLabel(schedule) {
   const match = String(schedule.startDate || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
   if (!match) return scheduleFrequencyLabels[schedule.frequency] || scheduleFrequencyLabels.none;
   const day = Number(match[2]);
-  if (schedule.frequency === "monthly") return `Ogni mese il giorno ${day}`;
-  if (schedule.frequency === "annual") return `Ogni anno il ${day} ${monthNames[Number(match[1]) - 1]}`;
-  if (schedule.frequency === "weekly") return `Ogni settimana dal ${dateLabel(schedule.startDate)}`;
-  if (schedule.frequency === "daily") return `Ogni giorno dal ${dateLabel(schedule.startDate)}`;
+  const interval = Math.max(1, Number(schedule.recurrenceInterval) || 1);
+  if (schedule.frequency === "monthly") return `Ogni ${interval === 1 ? "mese" : `${interval} mesi`} il giorno ${day}`;
+  if (schedule.frequency === "annual") return `Ogni ${interval === 1 ? "anno" : `${interval} anni`} il ${day} ${monthNames[Number(match[1]) - 1]}`;
+  if (schedule.frequency === "weekly") return `Ogni ${interval === 1 ? "settimana" : `${interval} settimane`} dal ${dateLabel(schedule.startDate)}`;
+  if (schedule.frequency === "daily") return `Ogni ${interval === 1 ? "giorno" : `${interval} giorni`} dal ${dateLabel(schedule.startDate)}`;
   return `Una volta il ${dateLabel(schedule.startDate)}`;
 }
 
@@ -43,6 +50,7 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
     note: initial?.note || "",
     startDate: initial?.startDate || today(),
     frequency: initial?.frequency || "none",
+    recurrenceInterval: initial?.recurrenceInterval || 1,
     endMode: initial?.endMode || "never",
     endDate: initial?.endDate || "",
     occurrenceCount: initial?.occurrenceCount || 1
@@ -54,13 +62,14 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
   const change = (key) => (event) => {
     const value = event.target.value;
     setForm((current) => key === "frequency" && value === "none"
-      ? { ...current, frequency: value, endMode: "never", endDate: "", occurrenceCount: 1 }
+      ? { ...current, frequency: value, recurrenceInterval: 1, endMode: "never", endDate: "", occurrenceCount: 1 }
       : { ...current, [key]: value });
   };
 
   function submit(event) {
     event.preventDefault();
     const recurring = form.frequency !== "none";
+    const recurrenceInterval = recurring ? Math.min(1000, Math.max(1, Number(form.recurrenceInterval) || 1)) : 1;
     const endMode = recurring ? form.endMode : "never";
     const endDate = endMode === "date" ? form.endDate : "";
     const occurrenceCount = endMode === "count" ? Number(form.occurrenceCount) : 0;
@@ -68,6 +77,7 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
     const timingChanged = Boolean(initial) && (
       initial.startDate !== form.startDate ||
       initial.frequency !== form.frequency ||
+      Number(initial.recurrenceInterval || 1) !== recurrenceInterval ||
       initial.endMode !== endMode ||
       initial.endDate !== endDate ||
       Number(initial.occurrenceCount || 0) !== occurrenceCount
@@ -77,6 +87,7 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
       ...form,
       amount: absoluteAmount === 0 ? 0 : form.kind === "expense" ? -absoluteAmount : absoluteAmount,
       currency: "EUR",
+      recurrenceInterval,
       endMode,
       endDate,
       occurrenceCount,
@@ -93,7 +104,8 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
         <label>Importo<div className="currency-input"><span aria-hidden="true">€</span><input type="number" min="0" step="0.01" value={form.amount} onChange={change("amount")} aria-label="Importo pianificato in euro" required /></div></label>
         <label>Categoria<input list="schedule-categories" value={form.category} onChange={change("category")} maxLength="200" required /><datalist id="schedule-categories">{categories.map((item) => <option key={item} value={item} />)}</datalist></label>
         <label>Prima scadenza<input type="date" value={form.startDate} onChange={change("startDate")} required /></label>
-        <label>Ripetizione<select value={form.frequency} onChange={change("frequency")}>{Object.entries(scheduleFrequencyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>Unità di ripetizione<select value={form.frequency} onChange={change("frequency")}>{Object.entries(scheduleFrequencyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        {form.frequency !== "none" && <label>{recurrenceIntervalLabels[form.frequency]}<input type="number" min="1" max="1000" step="1" value={form.recurrenceInterval} onChange={change("recurrenceInterval")} required /></label>}
         {form.frequency !== "none" && <label>Termine<select value={form.endMode} onChange={change("endMode")}>{Object.entries(endModeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         {form.frequency !== "none" && form.endMode === "date" && <label>Data di fine<input type="date" min={form.startDate} value={form.endDate} onChange={change("endDate")} required /></label>}
         {form.frequency !== "none" && form.endMode === "count" && <label>Numero di eventi<input type="number" min="1" max="100000" step="1" value={form.occurrenceCount} onChange={change("occurrenceCount")} required /></label>}

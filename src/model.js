@@ -28,6 +28,10 @@ export const dateLabel = (value) => {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : "—";
 };
+export function duplicateTransaction(transaction) {
+  const { id, createdAt, updatedAt, importId, sourceId, ...copy } = transaction;
+  return { ...copy, source: "manual", sourceId: "" };
+}
 export const today = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -67,6 +71,34 @@ export function investmentTransactionsForAccount(accountId, transactions) {
   return transactions
     .filter((item) => item.accountId === accountId && investmentMovementType(item))
     .sort((a, b) => (b.date || "").localeCompare(a.date || "") || String(b.id || "").localeCompare(String(a.id || "")));
+}
+
+export function filterInvestmentTransactions(transactions, { type = "", product = "" } = {}) {
+  const query = product.trim().toLocaleLowerCase("it");
+  return transactions.filter((item) => {
+    const name = String(item.payee || item.note || "").toLocaleLowerCase("it");
+    return (!type || investmentMovementType(item) === type) && (!query || name.includes(query));
+  });
+}
+
+export function createInvestmentTransaction(accountId, { type, date, amount, product, note }) {
+  const buy = type === "buy";
+  const absoluteAmount = Math.abs(Number(amount) || 0);
+  return {
+    accountId,
+    date,
+    kind: buy ? "expense" : "income",
+    amount: buy ? -absoluteAmount : absoluteAmount,
+    category: buy ? "Investimenti · Acquisto" : "Investimenti · Vendita",
+    payee: String(product || "").trim(),
+    note,
+    isTransfer: false,
+    currency: "EUR",
+    labels: [],
+    paymentType: buy ? "BUY" : "SELL",
+    source: "manual",
+    sourceId: ""
+  };
 }
 
 export function investmentActivity(accountId, transactions) {
@@ -117,6 +149,13 @@ export function financeSummary(accounts, transactions, month) {
     expenses: ordinary.filter((item) => item.kind === "expense").reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0),
     count: inMonth.length
   };
+}
+
+export function filterTransactionsByPeriod(transactions, { month = "", from = "", to = "" } = {}) {
+  return transactions.filter((item) => {
+    const date = String(item.date || "");
+    return (!month || date.startsWith(month)) && (!from || (date && date >= from)) && (!to || (date && date <= to));
+  });
 }
 
 export function categoryTotals(transactions) {
