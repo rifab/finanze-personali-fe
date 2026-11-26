@@ -65,11 +65,11 @@ La data conserva il giorno riportato nel CSV senza conversioni di fuso orario. G
 
 L'importatore riconosce il CSV ufficiale delle operazioni Trade Republic. Per ogni riga calcola il movimento netto sommando importo, commissione e imposta. Versamenti, prelievi, acquisti e vendite vengono classificati come trasferimenti patrimoniali, così modificano la liquidità senza alterare i totali di entrate e spese. Interessi accreditati, dividendi, bonus e rettifiche fiscali restano invece movimenti reali.
 
-La reimportazione usa l'identificativo dell'operazione fornito da Trade Republic per ignorare i duplicati. Se non esiste un conto di destinazione, l'app può creare `Trade Republic` con saldo iniziale zero e classificazione `Conto titoli`. La pagina Investimenti presenta prima il riepilogo complessivo e una scheda per ciascun conto; selezionando un conto si apre il dettaglio con acquisti, vendite, liquidità e operazioni paginate da 10, 15 o 25 elementi. Non tenta di ricostruire il valore corrente di mercato.
+La reimportazione usa l'identificativo dell'operazione fornito da Trade Republic per ignorare i duplicati. Se non esiste un conto di destinazione, l'app può creare `Trade Republic` con saldo iniziale zero e classificazione `Conto titoli`. La pagina Investimenti presenta prima il riepilogo complessivo e una scheda per ciascun conto; selezionando un conto si apre il dettaglio con acquisti, vendite, liquidità e operazioni paginate da 10, 15 o 25 elementi. Ogni operazione può essere modificata, duplicata o eliminata; la duplicazione crea un nuovo movimento manuale senza riutilizzare l'identificativo d'importazione. Non tenta di ricostruire il valore corrente di mercato.
 
 ## Aggiornamenti PWA
 
-In produzione il service worker controlla la disponibilità di una nuova versione all'avvio, al ritorno nell'app e ogni cinque minuti. Quando l'aggiornamento prende il controllo viene mostrato un avviso persistente con il pulsante `Aggiorna ora`; la pagina non viene ricaricata automaticamente mentre l'utente sta lavorando.
+In produzione il service worker controlla la disponibilità di una nuova versione all'avvio, al ritorno nell'app e ogni ora. La nuova versione resta in attesa: l'avviso permette di scegliere `Più tardi` oppure `Aggiorna ora`, e impedisce l'aggiornamento mentre sono aperti moduli o anteprime di importazione. La pagina viene ricaricata soltanto dopo la conferma e l'attivazione effettiva del nuovo service worker.
 
 ## Verifiche
 

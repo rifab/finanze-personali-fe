@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountBalance, categoryTotals, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentSummary, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
+import { accountBalance, categoryTotals, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentSummary, investmentTransactionDraft, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
 
 const accounts = [{ id: "a", initialBalance: 100 }, { id: "b", initialBalance: 20 }];
 const transactions = [
@@ -60,6 +60,14 @@ test("crea acquisti e vendite firmati sul conto selezionato", () => {
   const sale = createInvestmentTransaction("broker", { type: "sell", date: "2026-11-26", amount: 10, product: "ETF globale", note: "" });
   assert.deepEqual([purchase.accountId, purchase.kind, purchase.amount, purchase.category, purchase.payee, purchase.paymentType, purchase.isTransfer], ["broker", "expense", -25, "Investimenti · Acquisto", "ETF globale", "BUY", true]);
   assert.deepEqual([sale.accountId, sale.kind, sale.amount, sale.category, sale.paymentType, sale.isTransfer], ["broker", "income", 10, "Investimenti · Vendita", "SELL", true]);
+});
+
+test("prepara la modifica e la duplicazione di un'operazione di investimento", () => {
+  const original = { id: "buy", accountId: "broker", date: "2026-11-16", amount: -50, paymentType: "BUY", payee: "ETF globale", note: "PAC", source: "trade-republic-csv", sourceId: "trade-row", importId: "import" };
+  const edit = investmentTransactionDraft(original);
+  const copy = investmentTransactionDraft(original, { duplicate: true });
+  assert.deepEqual([edit.id, edit.type, edit.amount, edit.product, edit.sourceId], ["buy", "buy", 50, "ETF globale", "trade-row"]);
+  assert.deepEqual([copy.id, copy.type, copy.amount, copy.product, copy.source, copy.sourceId, copy.importId], [undefined, "buy", 50, "ETF globale", "manual", "", undefined]);
 });
 
 test("ordina prima il conto corrente postale e ultimo il libretto postale", () => {

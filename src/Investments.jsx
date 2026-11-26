@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Landmark,
   Pencil,
   Plus,
@@ -180,7 +181,7 @@ function InvestmentSchedules({ account, schedules, valuesHidden, onNew, onEdit, 
   );
 }
 
-function InvestmentOperations({ account, transactions, valuesHidden }) {
+function InvestmentOperations({ account, transactions, valuesHidden, onEdit, onDuplicate, onDelete }) {
   const activity = investmentActivity(account.id, transactions);
   const movements = investmentTransactionsForAccount(account.id, transactions);
   const [operationType, setOperationType] = useState("all");
@@ -262,6 +263,7 @@ function InvestmentOperations({ account, transactions, valuesHidden }) {
               <span role="columnheader">Tipo</span>
               <span role="columnheader">Strumento</span>
               <span role="columnheader">Importo netto</span>
+              <span role="columnheader">Azioni</span>
             </div>
             {visibleRows.map((item) => {
               const buy = String(item.paymentType || "").toUpperCase() === "BUY"
@@ -276,6 +278,11 @@ function InvestmentOperations({ account, transactions, valuesHidden }) {
                   <strong role="cell" className={buy ? "expense" : "income"}>
                     <Amount hidden={valuesHidden}>{money(item.amount)}</Amount>
                   </strong>
+                  <span role="cell" className="investment-table-actions">
+                    <button type="button" className="icon-button" onClick={() => onEdit(account, item)} aria-label={`Modifica ${item.payee || "operazione"}`} title="Modifica"><Pencil size={17} /></button>
+                    <button type="button" className="icon-button" onClick={() => onDuplicate(account, item)} aria-label={`Duplica ${item.payee || "operazione"}`} title="Duplica"><Copy size={17} /></button>
+                    <button type="button" className="icon-button" onClick={() => onDelete(item)} aria-label={`Elimina ${item.payee || "operazione"}`} title="Elimina"><Trash2 size={17} /></button>
+                  </span>
                 </div>
               );
             })}
@@ -349,7 +356,7 @@ function InvestmentAccountCard({ account, transactions, valuesHidden, onOpen }) 
   );
 }
 
-function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBack, onEdit, onNewTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
+function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBack, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
   const activity = investmentActivity(account.id, transactions);
 
   return (
@@ -429,13 +436,16 @@ function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBa
           account={account}
           transactions={transactions}
           valuesHidden={valuesHidden}
+          onEdit={onEditTransaction}
+          onDuplicate={onDuplicateTransaction}
+          onDelete={onDeleteTransaction}
         />
       </section>
     </>
   );
 }
 
-export default function Investments({ accounts, transactions, schedules, valuesHidden, onNew, onEdit, onNewTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
+export default function Investments({ accounts, transactions, schedules, valuesHidden, onNew, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
   const rows = accounts.filter((account) => account.isInvestment);
   const summary = investmentSummary(accounts, transactions);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -455,6 +465,9 @@ export default function Investments({ accounts, transactions, schedules, valuesH
         onBack={() => setSelectedAccountId("")}
         onEdit={onEdit}
         onNewTransaction={onNewTransaction}
+        onEditTransaction={onEditTransaction}
+        onDuplicateTransaction={onDuplicateTransaction}
+        onDeleteTransaction={onDeleteTransaction}
         onNewSchedule={onNewSchedule}
         onEditSchedule={onEditSchedule}
         onDeleteSchedule={onDeleteSchedule}

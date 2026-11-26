@@ -106,6 +106,16 @@ export function filterInvestmentTransactions(transactions, { type = "", product 
   });
 }
 
+export function investmentTransactionDraft(transaction, { duplicate = false } = {}) {
+  const source = duplicate ? duplicateTransaction(transaction) : { ...transaction };
+  return {
+    ...source,
+    type: investmentMovementType(transaction) || "buy",
+    amount: Math.abs(Number(transaction?.amount) || 0),
+    product: String(transaction?.payee || transaction?.note || "")
+  };
+}
+
 export function createInvestmentTransaction(accountId, { type, date, amount, product, note }) {
   const buy = type === "buy";
   const absoluteAmount = Math.abs(Number(amount) || 0);
