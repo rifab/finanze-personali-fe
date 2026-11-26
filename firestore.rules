@@ -57,16 +57,24 @@ service cloud.firestore {
 
     function validSchedule() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
-        && data.keys().hasAll(['name', 'accountId', 'kind', 'amount', 'currency', 'category', 'note', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'accountId', 'scheduleType', 'kind', 'amount', 'currency', 'category', 'note', 'product', 'monthDays', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'accountId', 'scheduleType', 'kind', 'amount', 'currency', 'category', 'note', 'product', 'monthDays', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
+        && data.scheduleType in ['payment', 'investment']
         && data.kind in ['expense', 'income']
         && data.amount is number
         && ((data.kind == 'expense' && data.amount <= 0) || (data.kind == 'income' && data.amount >= 0))
         && data.currency == 'EUR'
         && data.category is string && data.category.size() > 0 && data.category.size() <= 200
         && data.note is string && data.note.size() <= 5000
+        && data.product is string && data.product.size() <= 500
+        && data.monthDays is list && data.monthDays.size() <= 31
+        && data.monthDays.toSet().size() == data.monthDays.size()
+        && data.monthDays.toSet().difference([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31].toSet()).size() == 0
+        && ((data.scheduleType == 'payment' && data.product == '' && data.monthDays.size() == 0)
+          || (data.scheduleType == 'investment' && data.kind == 'expense' && data.category == 'Investimenti · Acquisto'
+            && data.product.size() > 0 && data.frequency == 'monthly' && data.monthDays.size() > 0))
         && data.startDate is string && data.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
         && data.frequency in ['none', 'daily', 'weekly', 'monthly', 'annual']
         && data.recurrenceInterval is int && data.recurrenceInterval >= 1 && data.recurrenceInterval <= 1000

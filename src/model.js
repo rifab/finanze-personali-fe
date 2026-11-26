@@ -44,12 +44,37 @@ export function normalizePaymentSchedule(schedule = {}) {
   const absoluteAmount = Math.abs(numericAmount);
   const numericInterval = Number(schedule.recurrenceInterval);
   const recurrenceInterval = Number.isInteger(numericInterval) && numericInterval >= 1 && numericInterval <= 1000 ? numericInterval : 1;
+  const scheduleType = schedule.scheduleType === "investment" ? "investment" : "payment";
+  const monthDays = [...new Set((Array.isArray(schedule.monthDays) ? schedule.monthDays : [])
+    .map(Number)
+    .filter((day) => Number.isInteger(day) && day >= 1 && day <= 31))].sort((a, b) => a - b);
   return {
     ...schedule,
+    scheduleType,
     kind,
     amount: absoluteAmount === 0 ? 0 : kind === "income" ? absoluteAmount : -absoluteAmount,
     currency: "EUR",
-    recurrenceInterval
+    recurrenceInterval,
+    product: scheduleType === "investment" ? String(schedule.product || "") : "",
+    monthDays: scheduleType === "investment" ? monthDays : []
+  };
+}
+
+export function scheduledTransactionDraft(schedule, dueDate) {
+  return {
+    accountId: schedule.accountId,
+    date: dueDate,
+    kind: schedule.kind,
+    amount: Number(schedule.amount) || 0,
+    currency: "EUR",
+    category: schedule.category,
+    note: schedule.note || "",
+    payee: schedule.name,
+    labels: [],
+    isTransfer: false,
+    paymentType: "",
+    source: "manual",
+    sourceId: ""
   };
 }
 
@@ -92,7 +117,7 @@ export function createInvestmentTransaction(accountId, { type, date, amount, pro
     category: buy ? "Investimenti · Acquisto" : "Investimenti · Vendita",
     payee: String(product || "").trim(),
     note,
-    isTransfer: false,
+    isTransfer: true,
     currency: "EUR",
     labels: [],
     paymentType: buy ? "BUY" : "SELL",
@@ -195,11 +220,36 @@ const occurrenceDate = (startDate, frequency, recurrenceInterval, index) => {
   return isoDate(new Date(Date.UTC(targetYear, targetMonth, Math.min(day, lastDay))));
 };
 
+const monthlyDayOccurrences = (schedule, throughDate, maximum, recurrenceInterval) => {
+  const [startYear, startMonth] = dateParts(schedule.startDate);
+  const monthDays = [...new Set(schedule.monthDays.map(Number))].filter((day) => Number.isInteger(day) && day >= 1 && day <= 31).sort((a, b) => a - b);
+  const dates = [];
+  for (let period = 0; period < 100000 && dates.length < maximum; period += 1) {
+    const targetIndex = startMonth - 1 + period * recurrenceInterval;
+    const targetYear = startYear + Math.floor(targetIndex / 12);
+    const targetMonth = ((targetIndex % 12) + 12) % 12;
+    const monthStart = isoDate(new Date(Date.UTC(targetYear, targetMonth, 1)));
+    if (monthStart > throughDate) break;
+    const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+    for (const configuredDay of monthDays) {
+      const date = isoDate(new Date(Date.UTC(targetYear, targetMonth, Math.min(configuredDay, lastDay))));
+      if (date < schedule.startDate || dates.at(-1) === date) continue;
+      if (date > throughDate || (schedule.endMode === "date" && schedule.endDate && date > schedule.endDate)) continue;
+      dates.push(date);
+      if (dates.length >= maximum) break;
+    }
+  }
+  return dates;
+};
+
 export function paymentScheduleOccurrences(schedule, throughDate) {
   if (!dateParts(schedule?.startDate) || !dateParts(throughDate) || schedule.startDate > throughDate) return [];
   const frequency = schedule.frequency || "none";
   const recurrenceInterval = Math.max(1, Math.min(1000, Number(schedule.recurrenceInterval) || 1));
   const maximum = frequency === "none" ? 1 : schedule.endMode === "count" ? Math.max(0, Number(schedule.occurrenceCount) || 0) : 100000;
+  if (frequency === "monthly" && Array.isArray(schedule.monthDays) && schedule.monthDays.length) {
+    return monthlyDayOccurrences(schedule, throughDate, maximum, recurrenceInterval);
+  }
   const dates = [];
   for (let index = 0; index < maximum; index += 1) {
     const date = occurrenceDate(schedule.startDate, frequency, recurrenceInterval, index);

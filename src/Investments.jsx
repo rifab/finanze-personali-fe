@@ -9,8 +9,10 @@ import {
   Landmark,
   Pencil,
   Plus,
+  Repeat2,
   Search,
   ShoppingCart,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 import {
@@ -22,7 +24,122 @@ import {
   investmentTransactionsForAccount,
   investmentTypes,
   money,
+  paymentScheduleState,
+  today,
 } from "./model.js";
+
+const investmentEndModeLabels = {
+  never: "Senza data di fine",
+  date: "Fino a una data",
+  count: "Dopo un numero di acquisti"
+};
+
+export function InvestmentScheduleForm({ account, initial, onSave, onClose }) {
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(() => ({
+    name: initial?.name || "Piano di accumulo",
+    product: initial?.product || "",
+    amount: Math.abs(Number(initial?.amount) || 0),
+    monthDays: initial?.monthDays?.length ? [...initial.monthDays] : [2, 16],
+    startDate: initial?.startDate || today(),
+    recurrenceInterval: initial?.recurrenceInterval || 1,
+    endMode: initial?.endMode || "never",
+    endDate: initial?.endDate || "",
+    occurrenceCount: initial?.occurrenceCount || 1,
+    note: initial?.note || ""
+  }));
+  const change = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const toggleMonthDay = (day) => {
+    setForm((current) => ({
+      ...current,
+      monthDays: current.monthDays.includes(day)
+        ? current.monthDays.filter((item) => item !== day)
+        : [...current.monthDays, day].sort((a, b) => a - b)
+    }));
+    setError("");
+  };
+  function submit(event) {
+    event.preventDefault();
+    const monthDays = [...new Set(form.monthDays)].sort((a, b) => a - b);
+    if (!monthDays.length) {
+      setError("Indica almeno un giorno del mese compreso tra 1 e 31.");
+      return;
+    }
+    const endMode = form.endMode;
+    const endDate = endMode === "date" ? form.endDate : "";
+    const occurrenceCount = endMode === "count" ? Number(form.occurrenceCount) : 0;
+    const recurrenceInterval = Math.min(1000, Math.max(1, Number(form.recurrenceInterval) || 1));
+    const timingChanged = Boolean(initial) && (
+      initial.startDate !== form.startDate ||
+      Number(initial.recurrenceInterval || 1) !== recurrenceInterval ||
+      initial.monthDays?.join(",") !== monthDays.join(",") ||
+      initial.endMode !== endMode ||
+      initial.endDate !== endDate ||
+      Number(initial.occurrenceCount || 0) !== occurrenceCount
+    );
+    const amount = Math.abs(Number(form.amount));
+    onSave({
+      ...initial,
+      name: form.name,
+      accountId: account.id,
+      scheduleType: "investment",
+      kind: "expense",
+      amount: amount === 0 ? 0 : -amount,
+      currency: "EUR",
+      category: "Investimenti · Acquisto",
+      note: form.note,
+      product: form.product,
+      startDate: form.startDate,
+      frequency: "monthly",
+      recurrenceInterval,
+      monthDays,
+      endMode,
+      endDate,
+      occurrenceCount,
+      completedThrough: timingChanged ? "" : initial?.completedThrough || ""
+    });
+  }
+  return (
+    <form onSubmit={submit}>
+      <p className="muted">Conto: <strong>{account.name}</strong></p>
+      <div className="form-grid">
+        <label>Nome piano<input autoFocus value={form.name} onChange={change("name")} maxLength="200" required /></label>
+        <label>Prodotto<input value={form.product} onChange={change("product")} maxLength="500" required /></label>
+        <label>Importo per acquisto<div className="currency-input"><span aria-hidden="true">€</span><input type="number" min="0.01" step="0.01" value={form.amount} onChange={change("amount")} required /></div></label>
+        <fieldset className="month-day-picker">
+          <legend>Giorni del mese</legend>
+          <p>Seleziona uno o più giorni in cui effettuare l'acquisto.</p>
+          <div className="month-day-grid" role="group" aria-label="Giorni del mese selezionati">
+            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+              <button
+                type="button"
+                key={day}
+                aria-pressed={form.monthDays.includes(day)}
+                aria-label={`Giorno ${day}`}
+                onClick={() => toggleMonthDay(day)}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
+          <small>
+            {form.monthDays.length
+              ? `Selezionati: ${form.monthDays.join(", ")}. Nei mesi più corti la data viene adattata all'ultimo giorno disponibile.`
+              : "Seleziona almeno un giorno."}
+          </small>
+        </fieldset>
+        <label>Data di inizio<input type="date" value={form.startDate} onChange={change("startDate")} required /></label>
+        <label>Ripeti ogni quanti mesi<input type="number" min="1" max="1000" step="1" value={form.recurrenceInterval} onChange={change("recurrenceInterval")} required /></label>
+        <label>Termine<select value={form.endMode} onChange={change("endMode")}>{Object.entries(investmentEndModeLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+        {form.endMode === "date" && <label>Data di fine<input type="date" min={form.startDate} value={form.endDate} onChange={change("endDate")} required /></label>}
+        {form.endMode === "count" && <label>Numero di acquisti<input type="number" min="1" max="100000" step="1" value={form.occurrenceCount} onChange={change("occurrenceCount")} required /></label>}
+      </div>
+      <label>Note<textarea value={form.note} onChange={change("note")} maxLength="5000" rows="3" /></label>
+      {error && <div className="notice error" role="alert">{error}</div>}
+      <div className="modal-actions"><button type="button" className="ghost" onClick={onClose}>Annulla</button><button className="primary">Salva PAC</button></div>
+    </form>
+  );
+}
 
 function Amount({ children, hidden }) {
   return (
@@ -32,6 +149,34 @@ function Amount({ children, hidden }) {
     >
       {hidden ? "••••••" : children}
     </span>
+  );
+}
+
+function InvestmentSchedules({ account, schedules, valuesHidden, onNew, onEdit, onDelete, onRecord }) {
+  const rows = schedules
+    .filter((item) => item.scheduleType === "investment" && item.accountId === account.id)
+    .map((item) => ({ item, state: paymentScheduleState(item, today()) }))
+    .sort((a, b) => (a.state.dueDates[0] || a.state.nextDate || "9999-12-31").localeCompare(b.state.dueDates[0] || b.state.nextDate || "9999-12-31"));
+  return (
+    <section className="panel investment-plans">
+      <header>
+        <div><h2>Piani di accumulo</h2><p>Acquisti ricorrenti da confermare alla scadenza.</p></div>
+        <button type="button" className="primary" onClick={() => onNew(account)}><Plus size={17} />Nuovo PAC</button>
+      </header>
+      {rows.length ? <div className="investment-plan-list">{rows.map(({ item, state }) => {
+        const dueDate = state.dueDates[0] || state.nextDate;
+        return <article className="investment-plan-row" key={item.id}>
+          <span className="investment-card-icon"><Repeat2 /></span>
+          <span className="investment-plan-main"><strong>{item.name}</strong><span>{item.product}</span><small>Ogni {Number(item.recurrenceInterval || 1) === 1 ? "mese" : `${item.recurrenceInterval} mesi`} il {item.monthDays.join(" e il ")}</small></span>
+          <span className="investment-plan-value"><strong><Amount hidden={valuesHidden}>{money(item.amount)}</Amount></strong>{dueDate && <small>{state.dueDates[0] ? "Da registrare" : "Prossimo"}: {dateLabel(dueDate)}</small>}</span>
+          <span className="investment-plan-actions">
+            {dueDate && <button type="button" className="complete-button" onClick={() => onRecord(item, dueDate)}>Registra acquisto</button>}
+            <button type="button" className="icon-button" onClick={() => onEdit(item)} aria-label={`Modifica ${item.name}`}><Pencil size={17} /></button>
+            <button type="button" className="icon-button" onClick={() => onDelete(item)} aria-label={`Elimina ${item.name}`}><Trash2 size={17} /></button>
+          </span>
+        </article>;
+      })}</div> : <p className="investment-plan-empty">Nessun piano di accumulo configurato per questo conto.</p>}
+    </section>
   );
 }
 
@@ -204,7 +349,7 @@ function InvestmentAccountCard({ account, transactions, valuesHidden, onOpen }) 
   );
 }
 
-function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit, onNewTransaction }) {
+function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBack, onEdit, onNewTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
   const activity = investmentActivity(account.id, transactions);
 
   return (
@@ -263,6 +408,16 @@ function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit,
         </article>
       </section>
 
+      <InvestmentSchedules
+        account={account}
+        schedules={schedules}
+        valuesHidden={valuesHidden}
+        onNew={onNewSchedule}
+        onEdit={onEditSchedule}
+        onDelete={onDeleteSchedule}
+        onRecord={onRecordSchedule}
+      />
+
       <section className="panel investment-detail-panel">
         <div className="investment-detail-period">
           <CalendarDays size={17} />
@@ -280,7 +435,7 @@ function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit,
   );
 }
 
-export default function Investments({ accounts, transactions, valuesHidden, onNew, onEdit, onNewTransaction }) {
+export default function Investments({ accounts, transactions, schedules, valuesHidden, onNew, onEdit, onNewTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
   const rows = accounts.filter((account) => account.isInvestment);
   const summary = investmentSummary(accounts, transactions);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -295,10 +450,15 @@ export default function Investments({ accounts, transactions, valuesHidden, onNe
       <InvestmentDetail
         account={selectedAccount}
         transactions={transactions}
+        schedules={schedules}
         valuesHidden={valuesHidden}
         onBack={() => setSelectedAccountId("")}
         onEdit={onEdit}
         onNewTransaction={onNewTransaction}
+        onNewSchedule={onNewSchedule}
+        onEditSchedule={onEditSchedule}
+        onDeleteSchedule={onDeleteSchedule}
+        onRecordSchedule={onRecordSchedule}
       />
     );
   }

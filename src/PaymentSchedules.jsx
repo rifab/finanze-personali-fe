@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, BellOff, BellRing, CalendarCheck, CalendarClock, Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarCheck, CalendarClock, Check, Pencil, Plus, ReceiptText, Trash2 } from "lucide-react";
 import { dateLabel, duePaymentCount, money, paymentScheduleState, scheduleFrequencyLabels, today } from "./model.js";
 
 const endModeLabels = {
@@ -25,6 +25,7 @@ function recurrenceLabel(schedule) {
   if (!match) return scheduleFrequencyLabels[schedule.frequency] || scheduleFrequencyLabels.none;
   const day = Number(match[2]);
   const interval = Math.max(1, Number(schedule.recurrenceInterval) || 1);
+  if (schedule.frequency === "monthly" && schedule.monthDays?.length) return `Ogni ${interval === 1 ? "mese" : `${interval} mesi`} nei giorni ${schedule.monthDays.join(" e ")}`;
   if (schedule.frequency === "monthly") return `Ogni ${interval === 1 ? "mese" : `${interval} mesi`} il giorno ${day}`;
   if (schedule.frequency === "annual") return `Ogni ${interval === 1 ? "anno" : `${interval} anni`} il ${day} ${monthNames[Number(match[1]) - 1]}`;
   if (schedule.frequency === "weekly") return `Ogni ${interval === 1 ? "settimana" : `${interval} settimane`} dal ${dateLabel(schedule.startDate)}`;
@@ -53,7 +54,10 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
     recurrenceInterval: initial?.recurrenceInterval || 1,
     endMode: initial?.endMode || "never",
     endDate: initial?.endDate || "",
-    occurrenceCount: initial?.occurrenceCount || 1
+    occurrenceCount: initial?.occurrenceCount || 1,
+    scheduleType: initial?.scheduleType || "payment",
+    product: initial?.product || "",
+    monthDays: initial?.monthDays || []
   }));
   const categories = useMemo(
     () => [...new Set(transactions.map((item) => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "it")),
@@ -134,7 +138,7 @@ function NotificationPanel({ permission, onEnable }) {
   );
 }
 
-export default function PaymentSchedules({ accounts, transactions, schedules, valuesHidden, notificationPermission, onEnableNotifications, onNew, onEdit, onDelete, onComplete }) {
+export default function PaymentSchedules({ accounts, transactions, schedules, valuesHidden, notificationPermission, onEnableNotifications, onNew, onEdit, onDelete, onComplete, onRecord }) {
   const referenceDate = today();
   const accountNames = new Map(accounts.map((item) => [item.id, item.name]));
   const rows = schedules
@@ -149,7 +153,7 @@ export default function PaymentSchedules({ accounts, transactions, schedules, va
   return (
     <>
       <header className="page-heading">
-        <div><p className="eyebrow">SCADENZE</p><h1>Pianificazioni</h1><p>Pagamenti e accrediti singoli o ricorrenti con promemoria alla scadenza.</p></div>
+        <div><p className="eyebrow">SCADENZE</p><h1>Pianificazioni</h1><p>Pagamenti, accrediti e acquisti ricorrenti con promemoria alla scadenza.</p></div>
         <button className="primary" disabled={!accounts.length} onClick={onNew}><Plus size={18} />Nuova pianificazione</button>
       </header>
       <NotificationPanel permission={notificationPermission} onEnable={onEnableNotifications} />
@@ -181,7 +185,8 @@ export default function PaymentSchedules({ accounts, transactions, schedules, va
                   {displayedDue && <time dateTime={displayedDue}>{shortDateLabel(displayedDue)}</time>}
                 </div>
                 <div className="schedule-actions">
-                  {firstDue && <button className="complete-button" onClick={() => onComplete(item, firstDue)}><Check size={17} />Segna eseguito</button>}
+                  {displayedDue && <button className="complete-button" onClick={() => onRecord(item, displayedDue)}><ReceiptText size={17} />{item.scheduleType === "investment" ? "Registra acquisto" : "Registra movimento"}</button>}
+                  {firstDue && <button className="icon-button" title="Segna eseguito senza movimento" aria-label={`Segna eseguita la scadenza di ${item.name} senza creare un movimento`} onClick={() => onComplete(item, firstDue)}><Check size={17} /></button>}
                   <button className="icon-button" title="Modifica" aria-label={`Modifica ${item.name}`} onClick={() => onEdit(item)}><Pencil size={17} /></button>
                   <button className="icon-button" title="Elimina" aria-label={`Elimina ${item.name}`} onClick={() => onDelete(item)}><Trash2 size={17} /></button>
                 </div>

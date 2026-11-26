@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountBalance, categoryTotals, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentSummary, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, sortAccountsByImportance } from "./model.js";
+import { accountBalance, categoryTotals, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentSummary, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
 
 const accounts = [{ id: "a", initialBalance: 100 }, { id: "b", initialBalance: 20 }];
 const transactions = [
@@ -58,8 +58,8 @@ test("filtra le operazioni di investimento per tipo e prodotto", () => {
 test("crea acquisti e vendite firmati sul conto selezionato", () => {
   const purchase = createInvestmentTransaction("broker", { type: "buy", date: "2026-11-25", amount: 25, product: " ETF globale ", note: "" });
   const sale = createInvestmentTransaction("broker", { type: "sell", date: "2026-11-26", amount: 10, product: "ETF globale", note: "" });
-  assert.deepEqual([purchase.accountId, purchase.kind, purchase.amount, purchase.category, purchase.payee, purchase.paymentType], ["broker", "expense", -25, "Investimenti · Acquisto", "ETF globale", "BUY"]);
-  assert.deepEqual([sale.accountId, sale.kind, sale.amount, sale.category, sale.paymentType], ["broker", "income", 10, "Investimenti · Vendita", "SELL"]);
+  assert.deepEqual([purchase.accountId, purchase.kind, purchase.amount, purchase.category, purchase.payee, purchase.paymentType, purchase.isTransfer], ["broker", "expense", -25, "Investimenti · Acquisto", "ETF globale", "BUY", true]);
+  assert.deepEqual([sale.accountId, sale.kind, sale.amount, sale.category, sale.paymentType, sale.isTransfer], ["broker", "income", 10, "Investimenti · Vendita", "SELL", true]);
 });
 
 test("ordina prima il conto corrente postale e ultimo il libretto postale", () => {
@@ -93,15 +93,32 @@ test("genera ricorrenze ogni cinque mesi e ogni due anni", () => {
   assert.deepEqual(paymentScheduleOccurrences({ startDate: "2024-02-29", frequency: "annual", recurrenceInterval: 2, endMode: "count", occurrenceCount: 3 }, "2030-01-01"), ["2024-02-29", "2026-02-28", "2028-02-29"]);
 });
 
+test("genera un PAC nei giorni 2 e 16 di ogni mese", () => {
+  assert.deepEqual(paymentScheduleOccurrences({ startDate: "2026-01-01", frequency: "monthly", recurrenceInterval: 1, monthDays: [2, 16], endMode: "count", occurrenceCount: 5 }, "2026-12-31"), ["2026-01-02", "2026-01-16", "2026-02-02", "2026-02-16", "2026-03-02"]);
+  assert.deepEqual(paymentScheduleOccurrences({ startDate: "2026-01-10", frequency: "monthly", recurrenceInterval: 1, monthDays: [2, 16], endMode: "count", occurrenceCount: 2 }, "2026-12-31"), ["2026-01-16", "2026-02-02"]);
+});
+
+test("mantiene futura una pianificazione biennale nell'anno intermedio", () => {
+  const schedule = { startDate: "2026-01-01", frequency: "annual", recurrenceInterval: 2, endMode: "never", completedThrough: "2026-01-01" };
+  assert.deepEqual(paymentScheduleState(schedule, "2027-11-26"), { dueDates: [], nextDate: "2028-01-01", completed: false, overdue: 0, dueToday: false });
+});
+
 test("calcola scadenze da notificare e prossimo evento", () => {
   const schedule = { startDate: "2026-11-01", frequency: "weekly", endMode: "never", completedThrough: "2026-11-08" };
   assert.deepEqual(paymentScheduleState(schedule, "2026-11-25"), { dueDates: ["2026-11-15", "2026-11-22"], nextDate: "2026-11-29", completed: false, overdue: 2, dueToday: false });
   assert.equal(duePaymentCount([schedule, { startDate: "2026-11-25", frequency: "none", endMode: "never", completedThrough: "" }], "2026-11-25"), 3);
 });
 
-test("normalizza tipo, valuta e segno degli importi pianificati", () => {
-  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", amount: 12 }), { name: "Canone", kind: "income", amount: 12, currency: "EUR" });
-  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", kind: "expense", amount: 12 }), { name: "Canone", kind: "expense", amount: -12, currency: "EUR" });
-  assert.deepEqual(normalizePaymentSchedule({ name: "Storico" }), { name: "Storico", kind: "expense", amount: 0, currency: "EUR" });
+test("normalizza tipo, valuta, segno e intervallo degli importi pianificati", () => {
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", amount: 12 }), { name: "Canone", scheduleType: "payment", kind: "income", amount: 12, currency: "EUR", recurrenceInterval: 1, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", kind: "expense", amount: 12, recurrenceInterval: 2 }), { name: "Canone", scheduleType: "payment", kind: "expense", amount: -12, currency: "EUR", recurrenceInterval: 2, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Storico" }), { name: "Storico", scheduleType: "payment", kind: "expense", amount: 0, currency: "EUR", recurrenceInterval: 1, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, product: "ETF", monthDays: [16, 2, 16] }), { name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, currency: "EUR", recurrenceInterval: 1, product: "ETF", monthDays: [2, 16] });
+});
+
+test("precompila un movimento dalla scadenza pianificata", () => {
+  assert.deepEqual(scheduledTransactionDraft({ accountId: "conto-1", kind: "expense", amount: -49.9, category: "Acquisti", note: "Rinnovo", name: "Amazon Prime" }, "2026-11-26"), {
+    accountId: "conto-1", date: "2026-11-26", kind: "expense", amount: -49.9, currency: "EUR", category: "Acquisti", note: "Rinnovo", payee: "Amazon Prime", labels: [], isTransfer: false, paymentType: "", source: "manual", sourceId: ""
+  });
 });
 

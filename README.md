@@ -45,7 +45,9 @@ I movimenti vengono salvati come documenti separati. Gli importi sono negativi p
 
 Un conto può mantenere il proprio tipo bancario ed essere contemporaneamente marcato come investimento. Il saldo del conto rappresenta la liquidità; acquisti e vendite determinano invece il capitale netto storico investito. Le quotazioni di mercato e le plus/minusvalenze non realizzate non vengono gestite dall'app.
 
-Le pianificazioni supportano uscite e entrate con importo in euro, eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali, senza fine, fino a una data o per un numero definito di eventi. La lista evidenzia importo e prossima scadenza per ciascun conto. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso. Segnare un evento come eseguito aggiorna la pianificazione ma non crea automaticamente un movimento.
+Le pianificazioni supportano uscite e entrate con importo in euro, eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali. L'intervallo è configurabile, per esempio ogni 2 settimane o ogni 2 anni; la serie può essere senza fine, terminare a una data oppure dopo un numero definito di eventi. La lista evidenzia importo e prossima scadenza per ciascun conto. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso. Da una scadenza si può aprire un movimento precompilato: il salvataggio del movimento e il completamento della scadenza avvengono insieme. Resta disponibile anche il completamento senza creare un movimento.
+
+Nei conti di investimento si possono configurare piani di accumulo mensili indicando uno o più giorni, per esempio il 2 e il 16. Ogni scadenza apre un acquisto precompilato; soltanto la conferma salva l'operazione nello storico investimenti e avanza il PAC alla data successiva.
 
 Nei selettori e nelle viste, il conto denominato `Conto corrente postale` ha priorità; `Libretto postale` viene mostrato per ultimo. Gli altri conti sono ordinati alfabeticamente.
 

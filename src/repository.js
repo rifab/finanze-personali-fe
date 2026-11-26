@@ -43,6 +43,21 @@ export function saveSchedule(uid, schedule) {
   return setDoc(doc(db, "users", uid, "financeSchedules", id), { ...data, updatedAt: serverTimestamp(), createdAt: data.createdAt || serverTimestamp() }, { merge: true });
 }
 
+export function saveScheduledTransaction(uid, transaction, schedule, dueDate) {
+  const batch = writeBatch(db);
+  const { id: transactionId, ...transactionData } = transaction;
+  batch.set(doc(db, "users", uid, "financeTransactions", transactionId), {
+    ...transactionData,
+    createdAt: transactionData.createdAt || serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  batch.set(doc(db, "users", uid, "financeSchedules", schedule.id), {
+    completedThrough: dueDate,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  return batch.commit();
+}
+
 export const removeSchedule = (uid, id) => deleteDoc(doc(db, "users", uid, "financeSchedules", id));
 
 export async function importFinanceCsv(uid, fileName, parsed, existingAccounts, existingIds) {
