@@ -24,6 +24,17 @@ export const scheduleFrequencyLabels = {
 };
 
 export const money = (value) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(value) || 0);
+export function chartScale(value, intervals = 4) {
+  const maximum = Math.max(Number(value) || 0, 1);
+  const rawStep = maximum / intervals;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalizedStep = rawStep / magnitude;
+  const niceStep = normalizedStep <= 1 ? 1 : normalizedStep <= 2 ? 2 : normalizedStep <= 2.5 ? 2.5 : normalizedStep <= 5 ? 5 : 10;
+  const step = niceStep * magnitude;
+  const max = Math.ceil(maximum / step) * step;
+  const tickCount = Math.round(max / step);
+  return { max, ticks: Array.from({ length: tickCount + 1 }, (_, index) => max - step * index) };
+}
 export const dateLabel = (value) => {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : "—";
@@ -92,6 +103,8 @@ const investmentMovementType = (transaction) => {
   return "";
 };
 
+export const isInvestmentTransaction = (transaction) => Boolean(investmentMovementType(transaction));
+
 export function investmentTransactionsForAccount(accountId, transactions) {
   return transactions
     .filter((item) => item.accountId === accountId && investmentMovementType(item))
@@ -114,6 +127,22 @@ export function investmentTransactionDraft(transaction, { duplicate = false } = 
     amount: Math.abs(Number(transaction?.amount) || 0),
     product: String(transaction?.payee || transaction?.note || "")
   };
+}
+
+export function investmentProductSummary(accountId, transactions) {
+  const products = new Map();
+  investmentTransactionsForAccount(accountId, transactions).forEach((transaction) => {
+    const label = String(transaction.payee || transaction.note || "Strumento non indicato").trim() || "Strumento non indicato";
+    const key = label.toLocaleLowerCase("it");
+    const current = products.get(key) || { id: key, label, purchases: 0, sales: 0 };
+    const amount = Math.abs(Number(transaction.amount) || 0);
+    if (investmentMovementType(transaction) === "buy") current.purchases += amount;
+    else current.sales += amount;
+    products.set(key, current);
+  });
+  return [...products.values()]
+    .map((item) => ({ ...item, net: item.purchases - item.sales }))
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.label.localeCompare(b.label, "it"));
 }
 
 export function createInvestmentTransaction(accountId, { type, date, amount, product, note }) {
@@ -190,6 +219,30 @@ export function filterTransactionsByPeriod(transactions, { month = "", from = ""
   return transactions.filter((item) => {
     const date = String(item.date || "");
     return (!month || date.startsWith(month)) && (!from || (date && date >= from)) && (!to || (date && date <= to));
+  });
+}
+
+const shortMonths = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+
+export function cashFlowPeriods(transactions, period, { includeTransfers = false } = {}) {
+  const match = String(period || "").match(/^(\d{4})(?:-(\d{2}))?$/);
+  if (!match) return [];
+  const year = Number(match[1]);
+  const month = match[2] ? Number(match[2]) : 0;
+  if (match[2] && (month < 1 || month > 12)) return [];
+  const length = month ? new Date(Date.UTC(year, month, 0)).getUTCDate() : 12;
+  return Array.from({ length }, (_, index) => {
+    const number = index + 1;
+    const key = month
+      ? `${match[1]}-${match[2]}-${String(number).padStart(2, "0")}`
+      : `${match[1]}-${String(number).padStart(2, "0")}`;
+    const rows = transactions.filter((item) => (includeTransfers || !item.isTransfer) && (month ? item.date === key : item.date?.startsWith(key)));
+    return {
+      key,
+      label: month ? String(number) : shortMonths[index],
+      income: rows.filter((item) => item.kind === "income").reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0),
+      expenses: rows.filter((item) => item.kind === "expense").reduce((total, item) => total + Math.abs(Number(item.amount) || 0), 0)
+    };
   });
 }
 

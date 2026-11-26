@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import {
   accountBalance,
+  chartScale,
   dateLabel,
   investmentActivity,
   filterInvestmentTransactions,
+  investmentProductSummary,
   investmentSummary,
   investmentTransactionsForAccount,
   investmentTypes,
@@ -35,8 +37,50 @@ const investmentEndModeLabels = {
   count: "Dopo un numero di acquisti"
 };
 
+const axisMoney = (value) => value >= 1000
+  ? `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1 }).format(value / 1000)}k €`
+  : `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 }).format(value)} €`;
+
+function InvestmentProductChart({ account, transactions, valuesHidden }) {
+  const [activeProduct, setActiveProduct] = useState("");
+  const products = investmentProductSummary(account.id, transactions);
+  const scale = chartScale(Math.max(...products.flatMap((item) => [item.purchases, item.sales]), 0));
+  const summary = products.map((item) => `${item.label}: acquisti ${money(item.purchases)}, vendite ${money(item.sales)}, netto ${money(item.net)}`).join(", ");
+
+  if (!products.length) return null;
+  return <section className={`panel investment-product-card${valuesHidden ? " values-hidden" : ""}`}>
+    <header>
+      <div><h2>Acquisti e vendite per prodotto</h2><p>Il valore sotto ogni prodotto è il capitale netto movimentato.</p></div>
+      <div className="investment-chart-legend" aria-label="Legenda grafico"><span className="purchases">Acquisti</span><span className="sales">Vendite</span></div>
+    </header>
+    <div className="investment-product-chart" role="group" aria-label={valuesHidden ? "Grafico investimenti con valori nascosti" : `Investimenti per prodotto. ${summary}`}>
+      <div className="finance-chart-y-axis" aria-hidden="true">{scale.ticks.map((tick, index) => <span key={tick} style={{ top: `${index / (scale.ticks.length - 1) * 100}%` }}>{valuesHidden ? "•••" : axisMoney(tick)}</span>)}</div>
+      <div className="investment-product-plot">
+        <div className="finance-chart-grid" aria-hidden="true">{scale.ticks.map((tick, index) => <i key={tick} style={{ top: `${index / (scale.ticks.length - 1) * 100}%` }} />)}</div>
+        <div className="investment-product-bars">
+          {products.map((item, index) => <div className="investment-product-col" key={item.id}>
+            {activeProduct === item.id && !valuesHidden && <output className={`investment-chart-tooltip ${index === 0 ? "start" : index === products.length - 1 ? "end" : ""}`} aria-live="polite">
+              <strong>{item.label}</strong>
+              <span><i className="purchases" />Acquisti {money(item.purchases)}</span>
+              <span><i className="sales" />Vendite {money(item.sales)}</span>
+              <b>Netto {money(item.net)}</b>
+            </output>}
+            <button type="button" disabled={valuesHidden} onClick={() => setActiveProduct(activeProduct === item.id ? "" : item.id)} aria-label={valuesHidden ? `${item.label}: valori nascosti` : `${item.label}: acquisti ${money(item.purchases)}, vendite ${money(item.sales)}, netto ${money(item.net)}`} aria-expanded={activeProduct === item.id}>
+              <i className="purchase-bar" style={{ height: `${valuesHidden ? 0 : item.purchases / scale.max * 100}%` }} />
+              <i className="sale-bar" style={{ height: `${valuesHidden ? 0 : item.sales / scale.max * 100}%` }} />
+            </button>
+            <span title={item.label}>{item.label}</span>
+            <b className={item.net < 0 ? "negative" : ""}>{valuesHidden ? "••••••" : money(item.net)}</b>
+          </div>)}
+        </div>
+      </div>
+    </div>
+  </section>;
+}
+
 export function InvestmentScheduleForm({ account, initial, onSave, onClose }) {
   const [error, setError] = useState("");
+  const [daysOpen, setDaysOpen] = useState(false);
   const [form, setForm] = useState(() => ({
     name: initial?.name || "Piano di accumulo",
     product: initial?.product || "",
@@ -64,6 +108,7 @@ export function InvestmentScheduleForm({ account, initial, onSave, onClose }) {
     const monthDays = [...new Set(form.monthDays)].sort((a, b) => a - b);
     if (!monthDays.length) {
       setError("Indica almeno un giorno del mese compreso tra 1 e 31.");
+      setDaysOpen(true);
       return;
     }
     const endMode = form.endMode;
@@ -107,28 +152,40 @@ export function InvestmentScheduleForm({ account, initial, onSave, onClose }) {
         <label>Nome piano<input autoFocus value={form.name} onChange={change("name")} maxLength="200" required /></label>
         <label>Prodotto<input value={form.product} onChange={change("product")} maxLength="500" required /></label>
         <label>Importo per acquisto<div className="currency-input"><span aria-hidden="true">€</span><input type="number" min="0.01" step="0.01" value={form.amount} onChange={change("amount")} required /></div></label>
-        <fieldset className="month-day-picker">
-          <legend>Giorni del mese</legend>
-          <p>Seleziona uno o più giorni in cui effettuare l'acquisto.</p>
-          <div className="month-day-grid" role="group" aria-label="Giorni del mese selezionati">
-            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-              <button
-                type="button"
-                key={day}
-                aria-pressed={form.monthDays.includes(day)}
-                aria-label={`Giorno ${day}`}
-                onClick={() => toggleMonthDay(day)}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
-          <small>
-            {form.monthDays.length
-              ? `Selezionati: ${form.monthDays.join(", ")}. Nei mesi più corti la data viene adattata all'ultimo giorno disponibile.`
-              : "Seleziona almeno un giorno."}
-          </small>
-        </fieldset>
+        <div className={`month-day-picker${daysOpen ? " open" : ""}`}>
+          <span className="month-day-label" id="month-day-label">Giorni del mese</span>
+          <button
+            type="button"
+            className="month-day-trigger"
+            aria-labelledby="month-day-label month-day-selection"
+            aria-expanded={daysOpen}
+            aria-controls="month-day-panel"
+            onClick={() => setDaysOpen((current) => !current)}
+          >
+            <span id="month-day-selection">{form.monthDays.length ? form.monthDays.join(", ") : "Seleziona i giorni"}</span>
+            <ChevronDown size={18} />
+          </button>
+          {daysOpen && <div className="month-day-panel" id="month-day-panel">
+            <p>Seleziona uno o più giorni in cui effettuare l'acquisto.</p>
+            <div className="month-day-grid" role="group" aria-label="Giorni del mese">
+              {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                <button
+                  type="button"
+                  key={day}
+                  aria-pressed={form.monthDays.includes(day)}
+                  aria-label={`Giorno ${day}`}
+                  onClick={() => toggleMonthDay(day)}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <div className="month-day-panel-footer">
+              <small>{form.monthDays.length ? `Selezionati: ${form.monthDays.join(", ")}. Nei mesi più corti viene usato l'ultimo giorno disponibile.` : "Seleziona almeno un giorno."}</small>
+              <button type="button" className="ghost" onClick={() => setDaysOpen(false)} disabled={!form.monthDays.length}>Conferma</button>
+            </div>
+          </div>}
+        </div>
         <label>Data di inizio<input type="date" value={form.startDate} onChange={change("startDate")} required /></label>
         <label>Ripeti ogni quanti mesi<input type="number" min="1" max="1000" step="1" value={form.recurrenceInterval} onChange={change("recurrenceInterval")} required /></label>
         <label>Termine<select value={form.endMode} onChange={change("endMode")}>{Object.entries(investmentEndModeLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
@@ -153,13 +210,13 @@ function Amount({ children, hidden }) {
   );
 }
 
-function InvestmentSchedules({ account, schedules, valuesHidden, onNew, onEdit, onDelete, onRecord }) {
+export function InvestmentSchedules({ account, schedules, valuesHidden, onNew, onEdit, onDelete, onRecord, dialog = false }) {
   const rows = schedules
     .filter((item) => item.scheduleType === "investment" && item.accountId === account.id)
     .map((item) => ({ item, state: paymentScheduleState(item, today()) }))
     .sort((a, b) => (a.state.dueDates[0] || a.state.nextDate || "9999-12-31").localeCompare(b.state.dueDates[0] || b.state.nextDate || "9999-12-31"));
   return (
-    <section className="panel investment-plans">
+    <section className={`${dialog ? "investment-plans-dialog" : "panel"} investment-plans`}>
       <header>
         <div><h2>Piani di accumulo</h2><p>Acquisti ricorrenti da confermare alla scadenza.</p></div>
         <button type="button" className="primary" onClick={() => onNew(account)}><Plus size={17} />Nuovo PAC</button>
@@ -356,7 +413,7 @@ function InvestmentAccountCard({ account, transactions, valuesHidden, onOpen }) 
   );
 }
 
-function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBack, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
+function InvestmentDetail({ account, transactions, valuesHidden, onBack, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onManageSchedules }) {
   const activity = investmentActivity(account.id, transactions);
 
   return (
@@ -375,6 +432,9 @@ function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBa
         <div className="investment-detail-actions">
           <button type="button" className="primary" onClick={() => onNewTransaction(account)}>
             <Plus size={18} />Nuova operazione
+          </button>
+          <button type="button" className="ghost" onClick={() => onManageSchedules(account)}>
+            <Repeat2 size={17} />Piani di accumulo
           </button>
           <button type="button" className="ghost" onClick={() => onEdit(account)}>
             <Pencil size={17} />Modifica conto
@@ -415,16 +475,6 @@ function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBa
         </article>
       </section>
 
-      <InvestmentSchedules
-        account={account}
-        schedules={schedules}
-        valuesHidden={valuesHidden}
-        onNew={onNewSchedule}
-        onEdit={onEditSchedule}
-        onDelete={onDeleteSchedule}
-        onRecord={onRecordSchedule}
-      />
-
       <section className="panel investment-detail-panel">
         <div className="investment-detail-period">
           <CalendarDays size={17} />
@@ -441,11 +491,13 @@ function InvestmentDetail({ account, transactions, schedules, valuesHidden, onBa
           onDelete={onDeleteTransaction}
         />
       </section>
+
+      <InvestmentProductChart account={account} transactions={transactions} valuesHidden={valuesHidden} />
     </>
   );
 }
 
-export default function Investments({ accounts, transactions, schedules, valuesHidden, onNew, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onNewSchedule, onEditSchedule, onDeleteSchedule, onRecordSchedule }) {
+export default function Investments({ accounts, transactions, valuesHidden, onNew, onEdit, onNewTransaction, onEditTransaction, onDuplicateTransaction, onDeleteTransaction, onManageSchedules }) {
   const rows = accounts.filter((account) => account.isInvestment);
   const summary = investmentSummary(accounts, transactions);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -460,7 +512,6 @@ export default function Investments({ accounts, transactions, schedules, valuesH
       <InvestmentDetail
         account={selectedAccount}
         transactions={transactions}
-        schedules={schedules}
         valuesHidden={valuesHidden}
         onBack={() => setSelectedAccountId("")}
         onEdit={onEdit}
@@ -468,10 +519,7 @@ export default function Investments({ accounts, transactions, schedules, valuesH
         onEditTransaction={onEditTransaction}
         onDuplicateTransaction={onDuplicateTransaction}
         onDeleteTransaction={onDeleteTransaction}
-        onNewSchedule={onNewSchedule}
-        onEditSchedule={onEditSchedule}
-        onDeleteSchedule={onDeleteSchedule}
-        onRecordSchedule={onRecordSchedule}
+        onManageSchedules={onManageSchedules}
       />
     );
   }

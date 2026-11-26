@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountBalance, categoryTotals, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentSummary, investmentTransactionDraft, investmentTransactionsForAccount, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
+import { accountBalance, cashFlowPeriods, categoryTotals, chartScale, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentProductSummary, investmentSummary, investmentTransactionDraft, investmentTransactionsForAccount, isInvestmentTransaction, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
 
 const accounts = [{ id: "a", initialBalance: 100 }, { id: "b", initialBalance: 20 }];
 const transactions = [
@@ -19,6 +19,18 @@ test("calcola il saldo di ogni conto dagli importi firmati", () => {
 test("filtra i movimenti per mese o per intervallo inclusivo di date", () => {
   assert.deepEqual(filterTransactionsByPeriod(transactions, { month: "2026-11" }).map((item) => item.id), ["1", "2", "3", "4"]);
   assert.deepEqual(filterTransactionsByPeriod(transactions, { from: "2026-11-03", to: "2026-11-04" }).map((item) => item.id), ["2", "3", "4"]);
+});
+
+test("aggrega entrate e uscite per anno o per giorno escludendo i trasferimenti", () => {
+  const annual = cashFlowPeriods(transactions, "2026");
+  assert.deepEqual(annual[9], { key: "2026-10", label: "Ott", income: 0, expenses: 5 });
+  assert.deepEqual(annual[10], { key: "2026-11", label: "Nov", income: 80, expenses: 30 });
+  const monthly = cashFlowPeriods(transactions, "2026-11");
+  assert.equal(monthly.length, 30);
+  assert.deepEqual(monthly[1], { key: "2026-11-02", label: "2", income: 0, expenses: 30 });
+  assert.deepEqual(monthly[2], { key: "2026-11-03", label: "3", income: 80, expenses: 0 });
+  assert.deepEqual(monthly[3], { key: "2026-11-04", label: "4", income: 0, expenses: 0 });
+  assert.deepEqual(cashFlowPeriods(transactions, "2026-11", { includeTransfers: true })[3], { key: "2026-11-04", label: "4", income: 10, expenses: 10 });
 });
 
 test("duplica un movimento senza gli identificativi e i metadati di origine", () => {
@@ -53,6 +65,8 @@ test("filtra le operazioni di investimento per tipo e prodotto", () => {
   assert.deepEqual(filterInvestmentTransactions(rows, { type: "buy" }).map((item) => item.id), ["buy", "note"]);
   assert.deepEqual(filterInvestmentTransactions(rows, { product: "globale" }).map((item) => item.id), ["buy", "sell"]);
   assert.deepEqual(filterInvestmentTransactions(rows, { type: "sell", product: "globale" }).map((item) => item.id), ["sell"]);
+  assert.equal(isInvestmentTransaction(rows[0]), true);
+  assert.equal(isInvestmentTransaction({ category: "Spesa", paymentType: "CARD" }), false);
 });
 
 test("crea acquisti e vendite firmati sul conto selezionato", () => {
@@ -68,6 +82,21 @@ test("prepara la modifica e la duplicazione di un'operazione di investimento", (
   const copy = investmentTransactionDraft(original, { duplicate: true });
   assert.deepEqual([edit.id, edit.type, edit.amount, edit.product, edit.sourceId], ["buy", "buy", 50, "ETF globale", "trade-row"]);
   assert.deepEqual([copy.id, copy.type, copy.amount, copy.product, copy.source, copy.sourceId, copy.importId], [undefined, "buy", 50, "ETF globale", "manual", "", undefined]);
+});
+
+test("calcola una scala leggibile e il riepilogo per prodotto", () => {
+  assert.deepEqual(chartScale(620), { max: 800, ticks: [800, 600, 400, 200, 0] });
+  const rows = investmentProductSummary("broker", [
+    { id: "1", accountId: "broker", amount: -100, paymentType: "BUY", payee: "ETF Globale" },
+    { id: "2", accountId: "broker", amount: -50, paymentType: "BUY", payee: "etf globale" },
+    { id: "3", accountId: "broker", amount: 40, paymentType: "SELL", payee: "ETF Globale" },
+    { id: "4", accountId: "broker", amount: 25, paymentType: "SELL", payee: "Azione" },
+    { id: "5", accountId: "other", amount: -999, paymentType: "BUY", payee: "Altro conto" }
+  ]);
+  assert.deepEqual(rows, [
+    { id: "etf globale", label: "ETF Globale", purchases: 150, sales: 40, net: 110 },
+    { id: "azione", label: "Azione", purchases: 0, sales: 25, net: -25 }
+  ]);
 });
 
 test("ordina prima il conto corrente postale e ultimo il libretto postale", () => {
