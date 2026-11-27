@@ -160,7 +160,7 @@ test("normalizza tipo, valuta, segno e intervallo degli importi pianificati", ()
 });
 
 test("precompila un movimento dalla scadenza pianificata", () => {
-  assert.deepEqual(scheduledTransactionDraft({ accountId: "conto-1", kind: "expense", amount: -49.9, category: "Acquisti", note: "Rinnovo", name: "Amazon Prime" }, "2026-11-26"), {
+  assert.deepEqual(scheduledTransactionDraft({ accountId: "conto-1", kind: "expense", amount: -49.9, category: "Acquisti", note: "Rinnovo", name: "Amazon Prime", paymentType: "credit_card" }, "2026-11-26"), {
     accountId: "conto-1", date: "2026-11-26", kind: "expense", amount: -49.9, currency: "EUR", category: "Acquisti", note: "Rinnovo", payee: "Amazon Prime", labels: [], isTransfer: false, paymentType: "credit_card", source: "manual", sourceId: ""
   });
 });

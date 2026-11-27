@@ -23,11 +23,11 @@ export default function CashFlowChart({ transactions, referenceMonth, valuesHidd
     <header>
       <div><h2>Andamento {includeTransfers ? "acquisti e vendite" : "entrate e uscite"}</h2><p>{title} · {includeTransfers ? "operazioni di investimento" : "trasferimenti esclusi"}</p></div>
       <div className="cashflow-header-actions">
-        <div className="chart-period-toggle" aria-label="Periodo del grafico">
+        <div className="chart-period-toggle" role="group" aria-label="Periodo del grafico">
           <button type="button" aria-pressed={mode === "year"} onClick={() => { setMode("year"); setActivePeriod(""); }}>Annuale</button>
           <button type="button" aria-pressed={mode === "month"} onClick={() => { setMode("month"); setActivePeriod(""); }}>Mensile</button>
         </div>
-        <div className="cashflow-legend" aria-label="Legenda grafico"><span className="income">{incomeLabel}</span><span className="expenses">{expenseLabel}</span></div>
+        <div className="cashflow-legend" role="group" aria-label="Legenda grafico"><span className="income">{incomeLabel}</span><span className="expenses">{expenseLabel}</span></div>
       </div>
     </header>
     <div className="cashflow-chart-scroll">

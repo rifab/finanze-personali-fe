@@ -315,34 +315,36 @@ function InvestmentOperations({ account, transactions, valuesHidden, onEdit, onD
       {visibleRows.length ? (
         <>
           <div className="investment-table" role="table" aria-label={`Operazioni di ${account.name}`}>
-            <div className="investment-table-head" role="row">
-              <span role="columnheader">Data</span>
-              <span role="columnheader">Tipo</span>
-              <span role="columnheader">Strumento</span>
-              <span role="columnheader">Importo netto</span>
-              <span role="columnheader">Azioni</span>
+            <div role="rowgroup">
+              <div className="investment-table-head" role="row">
+                <span role="columnheader">Data</span>
+                <span role="columnheader">Tipo</span>
+                <span role="columnheader">Strumento</span>
+                <span role="columnheader">Importo netto</span>
+                <span role="columnheader">Azioni</span>
+              </div>
+              {visibleRows.map((item) => {
+                const buy = String(item.paymentType || "").toUpperCase() === "BUY"
+                  || item.category === "Investimenti · Acquisto";
+                return (
+                  <div className="investment-table-row" role="row" key={item.id}>
+                    <time role="cell">{dateLabel(item.date)}</time>
+                    <span role="cell" className={`investment-operation ${buy ? "buy" : "sell"}`}>
+                      {buy ? "Acquisto" : "Vendita"}
+                    </span>
+                    <strong role="cell">{item.payee || item.note || "Strumento non indicato"}</strong>
+                    <strong role="cell" className={buy ? "expense" : "income"}>
+                      <Amount hidden={valuesHidden}>{money(item.amount)}</Amount>
+                    </strong>
+                    <span role="cell" className="investment-table-actions">
+                      <button type="button" className="icon-button" onClick={() => onEdit(account, item)} aria-label={`Modifica ${item.payee || "operazione"}`} title="Modifica"><Pencil size={17} /></button>
+                      <button type="button" className="icon-button" onClick={() => onDuplicate(account, item)} aria-label={`Duplica ${item.payee || "operazione"}`} title="Duplica"><Copy size={17} /></button>
+                      <button type="button" className="icon-button" onClick={() => onDelete(item)} aria-label={`Elimina ${item.payee || "operazione"}`} title="Elimina"><Trash2 size={17} /></button>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            {visibleRows.map((item) => {
-              const buy = String(item.paymentType || "").toUpperCase() === "BUY"
-                || item.category === "Investimenti · Acquisto";
-              return (
-                <div className="investment-table-row" role="row" key={item.id}>
-                  <time role="cell">{dateLabel(item.date)}</time>
-                  <span role="cell" className={`investment-operation ${buy ? "buy" : "sell"}`}>
-                    {buy ? "Acquisto" : "Vendita"}
-                  </span>
-                  <strong role="cell">{item.payee || item.note || "Strumento non indicato"}</strong>
-                  <strong role="cell" className={buy ? "expense" : "income"}>
-                    <Amount hidden={valuesHidden}>{money(item.amount)}</Amount>
-                  </strong>
-                  <span role="cell" className="investment-table-actions">
-                    <button type="button" className="icon-button" onClick={() => onEdit(account, item)} aria-label={`Modifica ${item.payee || "operazione"}`} title="Modifica"><Pencil size={17} /></button>
-                    <button type="button" className="icon-button" onClick={() => onDuplicate(account, item)} aria-label={`Duplica ${item.payee || "operazione"}`} title="Duplica"><Copy size={17} /></button>
-                    <button type="button" className="icon-button" onClick={() => onDelete(item)} aria-label={`Elimina ${item.payee || "operazione"}`} title="Elimina"><Trash2 size={17} /></button>
-                  </span>
-                </div>
-              );
-            })}
           </div>
           <footer className="investment-pagination">
             <span>Pagina {currentPage} di {pageCount}</span>
