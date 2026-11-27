@@ -46,13 +46,16 @@ export function saveSchedule(uid, schedule) {
 export function saveScheduledTransaction(uid, transaction, schedule, dueDate) {
   const batch = writeBatch(db);
   const { id: transactionId, ...transactionData } = transaction;
+  const { id: scheduleId, ...scheduleData } = normalizePaymentSchedule(schedule);
   batch.set(doc(db, "users", uid, "financeTransactions", transactionId), {
     ...transactionData,
     createdAt: transactionData.createdAt || serverTimestamp(),
     updatedAt: serverTimestamp()
   });
-  batch.set(doc(db, "users", uid, "financeSchedules", schedule.id), {
+  batch.set(doc(db, "users", uid, "financeSchedules", scheduleId), {
+    ...scheduleData,
     completedThrough: dueDate,
+    createdAt: scheduleData.createdAt || serverTimestamp(),
     updatedAt: serverTimestamp()
   }, { merge: true });
   return batch.commit();

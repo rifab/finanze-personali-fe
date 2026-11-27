@@ -57,7 +57,7 @@ service cloud.firestore {
 
     function validSchedule() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['name', 'accountId', 'scheduleType', 'kind', 'amount', 'currency', 'category', 'note', 'product', 'monthDays', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'accountId', 'scheduleType', 'kind', 'amount', 'currency', 'category', 'note', 'paymentType', 'product', 'monthDays', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['name', 'accountId', 'scheduleType', 'kind', 'amount', 'currency', 'category', 'note', 'product', 'monthDays', 'startDate', 'frequency', 'recurrenceInterval', 'endMode', 'endDate', 'occurrenceCount', 'completedThrough', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.accountId is string && data.accountId.size() > 0 && data.accountId.size() <= 200
@@ -68,6 +68,7 @@ service cloud.firestore {
         && data.currency == 'EUR'
         && data.category is string && data.category.size() > 0 && data.category.size() <= 200
         && data.note is string && data.note.size() <= 5000
+        && (!data.keys().hasAny(['paymentType']) || data.paymentType in ['', 'cash', 'debit_card', 'credit_card', 'bank_transfer', 'voucher', 'mobile_payment', 'web_payment'])
         && data.product is string && data.product.size() <= 500
         && data.monthDays is list && data.monthDays.size() <= 31
         && data.monthDays.toSet().size() == data.monthDays.size()

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountBalance, cashFlowPeriods, categoryTotals, chartScale, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentProductSummary, investmentSummary, investmentTransactionDraft, investmentTransactionsForAccount, isInvestmentTransaction, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
+import { accountBalance, cashFlowPeriods, categoryTotals, chartScale, createInvestmentTransaction, duplicateTransaction, duePaymentCount, filterInvestmentTransactions, filterTransactionsByPeriod, financeSummary, investmentActivity, investmentProductSummary, investmentSummary, investmentTransactionDraft, investmentTransactionsForAccount, isInvestmentTransaction, normalizePaymentSchedule, paymentScheduleOccurrences, paymentScheduleState, paymentTypeLabel, scheduledTransactionDraft, sortAccountsByImportance } from "./model.js";
 
 const accounts = [{ id: "a", initialBalance: 100 }, { id: "b", initialBalance: 20 }];
 const transactions = [
@@ -38,6 +38,12 @@ test("duplica un movimento senza gli identificativi e i metadati di origine", ()
   const copy = duplicateTransaction(original);
   assert.deepEqual(copy, { accountId: "a", amount: -30, source: "manual", sourceId: "" });
   assert.equal(original.id, "original");
+});
+
+test("mostra le etichette italiane dei tipi di pagamento senza alterare valori importati", () => {
+  assert.equal(paymentTypeLabel("credit_card"), "Carta di credito");
+  assert.equal(paymentTypeLabel("bank_transfer"), "Bonifico bancario");
+  assert.equal(paymentTypeLabel("TIPO_IMPORTATO"), "TIPO_IMPORTATO");
 });
 
 test("ricostruisce acquisti, vendite e capitale netto degli investimenti", () => {
@@ -147,15 +153,15 @@ test("calcola scadenze da notificare e prossimo evento", () => {
 });
 
 test("normalizza tipo, valuta, segno e intervallo degli importi pianificati", () => {
-  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", amount: 12 }), { name: "Canone", scheduleType: "payment", kind: "income", amount: 12, currency: "EUR", recurrenceInterval: 1, product: "", monthDays: [] });
-  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", kind: "expense", amount: 12, recurrenceInterval: 2 }), { name: "Canone", scheduleType: "payment", kind: "expense", amount: -12, currency: "EUR", recurrenceInterval: 2, product: "", monthDays: [] });
-  assert.deepEqual(normalizePaymentSchedule({ name: "Storico" }), { name: "Storico", scheduleType: "payment", kind: "expense", amount: 0, currency: "EUR", recurrenceInterval: 1, product: "", monthDays: [] });
-  assert.deepEqual(normalizePaymentSchedule({ name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, product: "ETF", monthDays: [16, 2, 16] }), { name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, currency: "EUR", recurrenceInterval: 1, product: "ETF", monthDays: [2, 16] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", amount: 12 }), { name: "Canone", scheduleType: "payment", kind: "income", amount: 12, currency: "EUR", paymentType: "", recurrenceInterval: 1, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Canone", kind: "expense", amount: 12, recurrenceInterval: 2, paymentType: "credit_card" }), { name: "Canone", scheduleType: "payment", kind: "expense", amount: -12, currency: "EUR", paymentType: "credit_card", recurrenceInterval: 2, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "Storico" }), { name: "Storico", scheduleType: "payment", kind: "expense", amount: 0, currency: "EUR", paymentType: "", recurrenceInterval: 1, product: "", monthDays: [] });
+  assert.deepEqual(normalizePaymentSchedule({ name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, product: "ETF", monthDays: [16, 2, 16] }), { name: "PAC", scheduleType: "investment", kind: "expense", amount: -100, currency: "EUR", paymentType: "", recurrenceInterval: 1, product: "ETF", monthDays: [2, 16] });
 });
 
 test("precompila un movimento dalla scadenza pianificata", () => {
   assert.deepEqual(scheduledTransactionDraft({ accountId: "conto-1", kind: "expense", amount: -49.9, category: "Acquisti", note: "Rinnovo", name: "Amazon Prime" }, "2026-11-26"), {
-    accountId: "conto-1", date: "2026-11-26", kind: "expense", amount: -49.9, currency: "EUR", category: "Acquisti", note: "Rinnovo", payee: "Amazon Prime", labels: [], isTransfer: false, paymentType: "", source: "manual", sourceId: ""
+    accountId: "conto-1", date: "2026-11-26", kind: "expense", amount: -49.9, currency: "EUR", category: "Acquisti", note: "Rinnovo", payee: "Amazon Prime", labels: [], isTransfer: false, paymentType: "credit_card", source: "manual", sourceId: ""
   });
 });
 

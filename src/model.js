@@ -24,6 +24,16 @@ export const scheduleFrequencyLabels = {
 };
 
 export const money = (value) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(value) || 0);
+export const paymentTypeLabels = {
+  cash: "Contanti",
+  debit_card: "Carta di debito",
+  credit_card: "Carta di credito",
+  bank_transfer: "Bonifico bancario",
+  voucher: "Voucher",
+  mobile_payment: "Pagamento mobile",
+  web_payment: "Pagamento web"
+};
+export const paymentTypeLabel = (value) => paymentTypeLabels[String(value || "")] || String(value || "");
 export function chartScale(value, intervals = 4) {
   const maximum = Math.max(Number(value) || 0, 1);
   const rawStep = maximum / intervals;
@@ -65,6 +75,7 @@ export function normalizePaymentSchedule(schedule = {}) {
     kind,
     amount: absoluteAmount === 0 ? 0 : kind === "income" ? absoluteAmount : -absoluteAmount,
     currency: "EUR",
+    paymentType: scheduleType === "payment" ? String(schedule.paymentType || "") : "",
     recurrenceInterval,
     product: scheduleType === "investment" ? String(schedule.product || "") : "",
     monthDays: scheduleType === "investment" ? monthDays : []
@@ -83,7 +94,7 @@ export function scheduledTransactionDraft(schedule, dueDate) {
     payee: schedule.name,
     labels: [],
     isTransfer: false,
-    paymentType: "",
+    paymentType: schedule.paymentType || "",
     source: "manual",
     sourceId: ""
   };

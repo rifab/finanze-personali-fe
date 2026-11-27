@@ -6,7 +6,7 @@ PWA privata per gestire conti, entrate e uscite personali e importare i moviment
 
 - gestione di più conti e calcolo del saldo;
 - classificazione dei conti che contengono anche investimenti, con storico di acquisti e vendite separato dalla liquidità;
-- registrazione di entrate, uscite e trasferimenti;
+- registrazione di entrate, uscite e trasferimenti, con tipo di pagamento facoltativo;
 - ricerca e filtri per conto, tipo, ambito classico/investimento e periodo;
 - grafico di entrate e uscite con andamento annuale o giornaliero del mese;
 - pianificazione di pagamenti e accrediti singoli o ricorrenti, con importo in euro e avvisi di scadenza;
@@ -44,11 +44,15 @@ users/{uid}/financeSchedules/{scheduleId}
 
 I movimenti vengono salvati come documenti separati. Gli importi sono negativi per le uscite e positivi per le entrate.
 
+Il tipo di pagamento può essere omesso oppure scelto tra contanti, carta di debito, carta di credito, bonifico bancario, voucher, pagamento mobile e pagamento web. La scelta è disponibile anche quando si registra il movimento effettivo da una pianificazione.
+
 La pagina Movimenti distingue le operazioni classiche da acquisti e vendite di investimento, partendo dal filtro `Classici`. Il grafico si apre sull'anno da desktop e sul mese da mobile, resta commutabile manualmente e rispetta ricerca, conto, tipo e ambito selezionati. Nei riepiloghi generali i trasferimenti patrimoniali sono esclusi; selezionando il solo ambito Investimenti vengono invece rappresentati acquisti e vendite.
 
 Un conto può mantenere il proprio tipo bancario ed essere contemporaneamente marcato come investimento. Il saldo del conto rappresenta la liquidità; acquisti e vendite determinano invece il capitale netto storico investito. Nel dettaglio del conto, un grafico a colonne confronta acquisti e vendite per prodotto e mostra il relativo capitale netto. Le quotazioni di mercato e le plus/minusvalenze non realizzate non vengono gestite dall'app.
 
 Le pianificazioni supportano uscite e entrate con importo in euro, eventi singoli e ricorrenze giornaliere, settimanali, mensili o annuali. L'intervallo è configurabile, per esempio ogni 2 settimane o ogni 2 anni; la serie può essere senza fine, terminare a una data oppure dopo un numero definito di eventi. La lista evidenzia importo e prossima scadenza per ciascun conto. Gli avvisi nell'interfaccia sono sempre disponibili; le notifiche di sistema vengono mostrate quando l'app è aperta o viene riaperta e il browser ha ricevuto il permesso. Da una scadenza si può aprire un movimento precompilato: il salvataggio del movimento e il completamento della scadenza avvengono insieme. Resta disponibile anche il completamento senza creare un movimento.
+
+La registrazione atomica riscrive anche la forma normalizzata della pianificazione, così le pianificazioni storiche prive dei campi introdotti successivamente possono essere completate senza essere rifiutate dalle regole Firestore.
 
 Nei conti di investimento si possono configurare piani di accumulo mensili indicando uno o più giorni, per esempio il 2 e il 16. Il selettore dei giorni resta compatto e apre il calendario mensile soltanto al click. La gestione dei PAC si apre in un popup dal dettaglio del conto, accanto alla creazione di una nuova operazione. Ogni scadenza apre un acquisto precompilato; soltanto la conferma salva l'operazione nello storico investimenti e avanza il PAC alla data successiva. Nel dettaglio la tabella delle operazioni precede il grafico per prodotto.
 

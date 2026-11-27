@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bell, BellOff, BellRing, CalendarCheck, CalendarClock, Check, Pencil, Plus, ReceiptText, Trash2 } from "lucide-react";
-import { dateLabel, duePaymentCount, money, paymentScheduleState, scheduleFrequencyLabels, today } from "./model.js";
+import { dateLabel, duePaymentCount, money, paymentScheduleState, paymentTypeLabel, paymentTypeLabels, scheduleFrequencyLabels, today } from "./model.js";
 
 const endModeLabels = {
   never: "Senza data di fine",
@@ -48,6 +48,7 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
     kind: initial?.kind || (Number(initial?.amount) > 0 ? "income" : "expense"),
     amount: Math.abs(Number(initial?.amount) || 0),
     category: initial?.category || "",
+    paymentType: initial?.paymentType || "",
     note: initial?.note || "",
     startDate: initial?.startDate || today(),
     frequency: initial?.frequency || "none",
@@ -107,6 +108,7 @@ export function ScheduleForm({ accounts, transactions, initial, onSave, onClose 
         <label>Tipo<select value={form.kind} onChange={change("kind")}><option value="expense">Uscita</option><option value="income">Entrata</option></select></label>
         <label>Importo<div className="currency-input"><span aria-hidden="true">€</span><input type="number" min="0" step="0.01" value={form.amount} onChange={change("amount")} aria-label="Importo pianificato in euro" required /></div></label>
         <label>Categoria<input list="schedule-categories" value={form.category} onChange={change("category")} maxLength="200" required /><datalist id="schedule-categories">{categories.map((item) => <option key={item} value={item} />)}</datalist></label>
+        <label>Pagamento<select value={form.paymentType} onChange={change("paymentType")}><option value="">Non specificato</option>{form.paymentType && !paymentTypeLabels[form.paymentType] && <option value={form.paymentType}>{paymentTypeLabel(form.paymentType)}</option>}{Object.entries(paymentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Prima scadenza<input type="date" value={form.startDate} onChange={change("startDate")} required /></label>
         <label>Unità di ripetizione<select value={form.frequency} onChange={change("frequency")}>{Object.entries(scheduleFrequencyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         {form.frequency !== "none" && <label>{recurrenceIntervalLabels[form.frequency]}<input type="number" min="1" max="1000" step="1" value={form.recurrenceInterval} onChange={change("recurrenceInterval")} required /></label>}
